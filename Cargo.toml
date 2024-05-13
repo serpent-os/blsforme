@@ -3,10 +3,12 @@ resolver = "2"
 
 default-members = [
     "blsctl",
+    "blsforme",
 ]
 
 members = [
     "blsctl",
+    "blsforme",
 ]
 
 [workspace.dependencies]
