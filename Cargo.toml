@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+
+default-members = [
+    "blsctl",
+]
+
+members = [
+    "blsctl",
+]
+
+[workspace.dependencies]
+thiserror = "1.0.60"
