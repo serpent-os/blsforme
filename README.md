@@ -1,5 +1,8 @@
 # blsforme
 
+> [!WARNING]
+> This repository is in a state of constant flux as we enable baremetal Serpent installations.
+
 A management tool and library enabling Linux distributions to more easily adopt the [Boot Loader Specification](https://uapi-group.org/specifications/specs/boot_loader_specification).
 
  - Discovery of ESP through [Boot Loader Interface](https://systemd.io/BOOT_LOADER_INTERFACE/) - allow suppression of ESP & XBOOTLDR automounting to alleviate weak data integrity concerns.
