@@ -4,6 +4,7 @@
 
 use std::path::PathBuf;
 
+pub mod bootloader;
 pub mod mtab;
 pub mod topology;
 
