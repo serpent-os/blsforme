@@ -2,4 +2,32 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use std::path::PathBuf;
+
 pub mod mtab;
+pub mod topology;
+
+/// Core configuration for boot management
+pub struct Configuration {
+    /// Root of all operations
+    pub root: Root,
+}
+
+/// Wrap a root into a strong type to avoid confusion
+pub enum Root {
+    /// Native installation
+    Native(PathBuf),
+
+    /// Image generation
+    Image(PathBuf),
+}
+
+impl Root {
+    /// When we don't need the type of the root..
+    pub fn path(&self) -> &PathBuf {
+        match self {
+            Root::Native(p) => p,
+            Root::Image(p) => p,
+        }
+    }
+}
