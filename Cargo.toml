@@ -14,3 +14,4 @@ members = [
 [workspace.dependencies]
 log = "0.4.21"
 thiserror = "1.0.60"
+nix = "0.28.0"

@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 gpt = "3.1.0"
+nix.workspace = true
 thiserror.workspace = true
