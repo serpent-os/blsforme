@@ -8,6 +8,8 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use human_panic::Metadata;
+use pretty_env_logger::formatted_builder;
 
 /// Boot Loader Specification compatible kernel/initrd/cmdline management
 #[derive(Parser, Debug)]
@@ -60,7 +62,19 @@ enum Commands {
 }
 
 fn main() {
+    human_panic::setup_panic!(
+        Metadata::new(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+            .authors("Ikey Doherty <ikey@serpentos.com>")
+            .homepage("https://github.com/serpent-os/blsforme")
+            .support("- Please file an issue at https://github.com/serpent-os/blsforme/issues")
+    );
+
+    formatted_builder()
+        .filter(None, log::LevelFilter::Trace)
+        .init();
+
     let res = Cli::parse();
+
     match res.command {
         Commands::Version => todo!(),
         Commands::ReportBooted => todo!(),

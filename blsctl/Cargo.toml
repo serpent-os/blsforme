@@ -6,4 +6,7 @@ edition = "2021"
 [dependencies]
 blsforme = { path = "../blsforme" }
 clap = { version = "4.5.4", features = ["derive"] }
+human-panic = "2.0.0"
+log.workspace = true
+pretty_env_logger = "0.5.0"
 thiserror.workspace = true
