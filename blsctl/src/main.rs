@@ -60,6 +60,31 @@ enum Commands {
 
     /// List kernels on `$BOOT`
     ListKernels,
+
+    /// Status information (debugging)
+    Status,
+}
+
+fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
+    let probe = Topology::probe(config)
+        .wrap_err(format!(
+            "Unable to probe topology and block device for `{}`",
+            config.root.path().display()
+        ))
+        .with_note(|| "Please make sure that the path definitely exists and is readable")?;
+    log::info!("Topology result: {probe:?}");
+
+    println!();
+    println!(
+        "    *  Found rootfs device: {}",
+        probe.rootfs.path.display()
+    );
+    println!(
+        "    *  Additional `/proc/cmdline`: {}",
+        probe.rootfs.root_cmdline()
+    );
+
+    Ok(probe)
 }
 
 fn main() -> color_eyre::Result<()> {
@@ -100,29 +125,14 @@ fn main() -> color_eyre::Result<()> {
         Commands::ReportBooted => todo!(),
         Commands::RemoveKernel => todo!(),
         Commands::MountBoot => todo!(),
-        Commands::Update => {
-            let probe = Topology::probe(&config)
-                .wrap_err(format!(
-                    "Unable to probe topology and block device for `{}`",
-                    config.root.path().display()
-                ))
-                .with_note(|| "Please make sure that the path definitely exists and is readable")?;
-            log::info!("Topology result: {probe:?}");
-
-            println!();
-            println!(
-                "    *  Found rootfs device: {}",
-                probe.rootfs.path.display()
-            );
-            println!(
-                "    *  Additional `/proc/cmdline`: {}",
-                probe.rootfs.root_cmdline()
-            );
-        }
+        Commands::Update => todo!(),
         Commands::SetTimeout { timeout: _ } => todo!(),
         Commands::GetTimeout => todo!(),
         Commands::SetKernel { kernel: _ } => todo!(),
         Commands::ListKernels => todo!(),
+        Commands::Status => {
+            let _ = inspect_root(&config)?;
+        }
     }
 
     Ok(())
