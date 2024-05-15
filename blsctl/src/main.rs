@@ -97,18 +97,23 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
 
     for p in query_paths {
         if p.exists() {
+            log::trace!("Reading os-release from: {}", p.display());
             let text = fs::read_to_string(p)?;
             let os_rel = OsRelease::from_str(&text)?;
 
             match os_rel.id.as_str() {
                 "solus" => {
                     if os_rel.version.name.is_some_and(|v| v.starts_with('4')) {
+                        log::trace!("Legacy schema due to Solus 4 installation");
                         return Ok(RootSchema::CBM("com.solus-project"));
                     } else {
                         return Ok(RootSchema::BLS4);
                     }
                 }
-                "clear-linux-os" => return Ok(RootSchema::CBM("org.clearlinux")),
+                "clear-linux-os" => {
+                    log::trace!("Legacy schema due to Clear Linux OS installation");
+                    return Ok(RootSchema::CBM("org.clearlinux"));
+                }
                 _ => return Ok(RootSchema::BLS4),
             }
         }
@@ -126,20 +131,13 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
             config.root.path().display()
         ))
         .with_note(|| "Please make sure that the path definitely exists and is readable")?;
-    log::info!("Topology result: {probe:?}");
+    log::trace!("Topology result: {probe:?}");
 
-    println!();
-    println!(
-        "    *  Found rootfs device: {}",
-        probe.rootfs.path.display()
-    );
-    println!(
-        "    *  Additional `/proc/cmdline`: {}",
-        probe.rootfs.root_cmdline()
-    );
+    log::info!("Using rootfs device: {}", probe.rootfs.path.display());
+    log::info!("Additional /proc/cmdline: {}", probe.rootfs.root_cmdline());
 
     let schema = query_schema(config)?;
-    println!("    *  Schema: {schema:?}");
+    log::info!("Root Schema: {schema:?}");
 
     Ok(probe)
 }
@@ -151,7 +149,10 @@ fn main() -> color_eyre::Result<()> {
         .issue_filter(|_| true)
         .install()?;
 
-    formatted_builder().init();
+    formatted_builder()
+        .filter_level(log::LevelFilter::Info)
+        .parse_default_env()
+        .init();
 
     let res = Cli::parse();
     let root = if res.image {
@@ -172,10 +173,7 @@ fn main() -> color_eyre::Result<()> {
     let config = Configuration { root };
 
     log::trace!("Using configuration: {config:?}");
-    println!(
-        " 🔎 Inspecting root device: {}",
-        config.root.path().display()
-    );
+    log::info!("Inspecting root device: {}", config.root.path().display());
 
     match res.command {
         Commands::Version => todo!(),
