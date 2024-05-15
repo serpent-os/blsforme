@@ -5,11 +5,18 @@
 //! Provides a CLI compatible with `clr-boot-manager` to be used as a drop-in
 //! replacement for Solus.
 
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
-use blsforme::{topology::Topology, Configuration, Root};
+use blsforme::{os_release::OsRelease, topology::Topology, Configuration, Root};
 use clap::{Parser, Subcommand};
-use color_eyre::{eyre::Context, Section};
+use color_eyre::{
+    eyre::{eyre, Context},
+    Section,
+};
 use pretty_env_logger::formatted_builder;
 
 /// Boot Loader Specification compatible kernel/initrd/cmdline management
@@ -65,6 +72,53 @@ enum Commands {
     Status,
 }
 
+/// Determine the schema to utilise when scanning for kernels
+#[derive(Debug)]
+enum RootSchema {
+    /// clr-boot-manager era, fixed namespace
+    CBM(&'static str),
+
+    /// blsforme schema
+    BLS4,
+}
+
+/// Query the schema we need to use for pre BLS schema installations
+fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
+    let query_paths = vec![
+        config.root.path().join("run").join("os-release"),
+        config.root.path().join("etc").join("os-release"),
+        config
+            .root
+            .path()
+            .join("usr")
+            .join("lib")
+            .join("os-release"),
+    ];
+
+    for p in query_paths {
+        if p.exists() {
+            let text = fs::read_to_string(p)?;
+            let os_rel = OsRelease::from_str(&text)?;
+
+            match os_rel.id.as_str() {
+                "solus" => {
+                    if os_rel.version.name.is_some_and(|v| v.starts_with('4')) {
+                        return Ok(RootSchema::CBM("com.solus-project"));
+                    } else {
+                        return Ok(RootSchema::BLS4);
+                    }
+                }
+                "clear-linux-os" => return Ok(RootSchema::CBM("org.clearlinux")),
+                _ => return Ok(RootSchema::BLS4),
+            }
+        }
+    }
+
+    Err(
+        eyre!("Unable to detect the Linux distribution").with_warning(|| "A valid os-release file is required to detect the kernel schema. It is not possible to proceed without it")
+    )
+}
+
 fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
     let probe = Topology::probe(config)
         .wrap_err(format!(
@@ -83,6 +137,9 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
         "    *  Additional `/proc/cmdline`: {}",
         probe.rootfs.root_cmdline()
     );
+
+    let schema = query_schema(config)?;
+    println!("    *  Schema: {schema:?}");
 
     Ok(probe)
 }
