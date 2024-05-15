@@ -44,13 +44,26 @@ pub enum FilesystemID {
     PartUUID(String),
     UUID(String),
     // Use device path
-    Path,
+    Path(String),
+}
+
+impl FilesystemID {
+    fn root_cmdline_partial(&self) -> String {
+        match &self {
+            FilesystemID::PartUUID(u) => format!("PARTUUID={u}"),
+            FilesystemID::UUID(u) => format!("UUID={u}"),
+            FilesystemID::Path(p) => p.clone(),
+        }
+    }
 }
 
 /// Nice wrapping of filesystems
 #[derive(Debug)]
 pub enum Filesystem {
-    Btrfs { subvol: Option<String> },
+    Btrfs {
+        id: FilesystemID,
+        subvol: Option<String>,
+    },
     // Some identifier for a filesystem not needing specialisation
     Any(FilesystemID),
 }
@@ -67,22 +80,18 @@ impl BlockDevice {
     pub fn root_cmdline(&self) -> String {
         match &self.filesystem {
             // TODO: Use UUID, account for LVM!
-            Filesystem::Btrfs { subvol } => {
+            Filesystem::Btrfs { subvol, id } => {
                 if let Some(subvol) = subvol {
                     format!(
                         "root={} rootfsflags=subvol={}",
-                        &self.path.display(),
+                        id.root_cmdline_partial(),
                         subvol
                     )
                 } else {
-                    format!("root={}", &self.path.display())
+                    format!("root={}", id.root_cmdline_partial())
                 }
             }
-            Filesystem::Any(id) => match id {
-                FilesystemID::PartUUID(pt_uuid) => format!("root=PARTUUID={}", pt_uuid),
-                FilesystemID::UUID(uuid) => format!("root=UUID={}", uuid),
-                FilesystemID::Path => format!("root={}", &self.path.display()),
-            },
+            Filesystem::Any(id) => format!("root={}", id.root_cmdline_partial()),
         }
     }
 }
@@ -159,9 +168,10 @@ impl Topology {
 
         let filesystem = match mount.filesystem {
             "btrfs" => Filesystem::Btrfs {
+                id: FilesystemID::Path(mount.device.into()),
                 subvol: options.get("subvol").map(|v| v.to_string()),
             },
-            _ => Filesystem::Any(FilesystemID::Path),
+            _ => Filesystem::Any(FilesystemID::Path(mount.device.into())),
         };
         Ok(BlockDevice {
             filesystem,
@@ -181,9 +191,10 @@ impl Topology {
             .join("dev")
             .join("block")
             .join(format!("{major}:{minor}"));
+        let fs_path = fs::canonicalize(path)?;
         Ok(BlockDevice {
-            filesystem: Filesystem::Any(FilesystemID::Path),
-            path: fs::canonicalize(path)?,
+            filesystem: Filesystem::Any(FilesystemID::Path(fs_path.to_string_lossy().to_string())),
+            path: fs_path,
         })
     }
 }
