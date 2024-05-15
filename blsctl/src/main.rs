@@ -82,17 +82,12 @@ enum RootSchema {
     BLS4,
 }
 
-/// Query the schema we need to use for pre BLS schema installations
-fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
+fn scan_os_release(root: impl AsRef<Path>) -> color_eyre::Result<OsRelease> {
+    let root = root.as_ref();
     let query_paths = vec![
-        config.root.path().join("run").join("os-release"),
-        config.root.path().join("etc").join("os-release"),
-        config
-            .root
-            .path()
-            .join("usr")
-            .join("lib")
-            .join("os-release"),
+        root.join("run").join("os-release"),
+        root.join("etc").join("os-release"),
+        root.join("usr").join("lib").join("os-release"),
     ];
 
     for p in query_paths {
@@ -100,28 +95,33 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
             log::trace!("Reading os-release from: {}", p.display());
             let text = fs::read_to_string(p)?;
             let os_rel = OsRelease::from_str(&text)?;
-
-            match os_rel.id.as_str() {
-                "solus" => {
-                    if os_rel.version.name.is_some_and(|v| v.starts_with('4')) {
-                        log::trace!("Legacy schema due to Solus 4 installation");
-                        return Ok(RootSchema::CBM("com.solus-project"));
-                    } else {
-                        return Ok(RootSchema::BLS4);
-                    }
-                }
-                "clear-linux-os" => {
-                    log::trace!("Legacy schema due to Clear Linux OS installation");
-                    return Ok(RootSchema::CBM("org.clearlinux"));
-                }
-                _ => return Ok(RootSchema::BLS4),
-            }
+            return Ok(os_rel);
         }
     }
+    Err(eyre!(
+        "Failed to determine the Linux distribution by scanning os-release"
+    ))
+}
 
-    Err(
-        eyre!("Unable to detect the Linux distribution").with_warning(|| "A valid os-release file is required to detect the kernel schema. It is not possible to proceed without it")
-    )
+/// Query the schema we need to use for pre BLS schema installations
+fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
+    let os_rel = scan_os_release(config.root.path())?;
+
+    match os_rel.id.as_str() {
+        "solus" => {
+            if os_rel.version.name.is_some_and(|v| v.starts_with('4')) {
+                log::trace!("Legacy schema due to Solus 4 installation");
+                Ok(RootSchema::CBM("com.solus-project"))
+            } else {
+                Ok(RootSchema::BLS4)
+            }
+        }
+        "clear-linux-os" => {
+            log::trace!("Legacy schema due to Clear Linux OS installation");
+            Ok(RootSchema::CBM("org.clearlinux"))
+        }
+        _ => Ok(RootSchema::BLS4),
+    }
 }
 
 fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
@@ -143,9 +143,16 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
 }
 
 fn main() -> color_eyre::Result<()> {
+    let host_os = scan_os_release("/").expect("Cannot determine running Linux distro");
     color_eyre::config::HookBuilder::default()
         .issue_url("https://github.com/serpent-os/blsforme/issues/new")
+        .add_issue_metadata("tool-context", "standalone (blsctl)")
         .add_issue_metadata("version", env!("CARGO_PKG_VERSION"))
+        .add_issue_metadata("os-release-name", host_os.name)
+        .add_issue_metadata(
+            "os-release-version",
+            host_os.version.name.unwrap_or("n/a".into()),
+        )
         .issue_filter(|_| true)
         .install()?;
 
