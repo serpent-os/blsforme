@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 pub mod bootloader;
 pub mod mtab;
+pub mod os_release;
 pub mod topology;
 
 /// Core configuration for boot management
