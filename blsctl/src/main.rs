@@ -66,10 +66,7 @@ fn main() -> color_eyre::Result<()> {
     color_eyre::config::HookBuilder::default()
         .issue_url("https://github.com/serpent-os/blsforme/issues/new")
         .add_issue_metadata("version", env!("CARGO_PKG_VERSION"))
-        .issue_filter(|kind| match kind {
-            color_eyre::ErrorKind::NonRecoverable(_) => false,
-            color_eyre::ErrorKind::Recoverable(_) => true,
-        })
+        .issue_filter(|_| true)
         .install()?;
 
     formatted_builder().init();
