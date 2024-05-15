@@ -8,12 +8,14 @@ pub mod mtab;
 pub mod topology;
 
 /// Core configuration for boot management
+#[derive(Debug)]
 pub struct Configuration {
     /// Root of all operations
     pub root: Root,
 }
 
 /// Wrap a root into a strong type to avoid confusion
+#[derive(Debug)]
 pub enum Root {
     /// Native installation
     Native(PathBuf),
