@@ -9,3 +9,4 @@ edition = "2021"
 gpt = "3.1.0"
 nix.workspace = true
 thiserror.workspace = true
+uuid = { version = "1.8.0", features = ["v8"] }
