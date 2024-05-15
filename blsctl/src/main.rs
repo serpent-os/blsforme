@@ -7,9 +7,9 @@
 
 use std::path::{Path, PathBuf};
 
-use blsforme::{Configuration, Root};
+use blsforme::{topology::Topology, Configuration, Root};
 use clap::{Parser, Subcommand};
-use human_panic::Metadata;
+use color_eyre::{eyre::Context, Section};
 use pretty_env_logger::formatted_builder;
 
 /// Boot Loader Specification compatible kernel/initrd/cmdline management
@@ -62,17 +62,17 @@ enum Commands {
     ListKernels,
 }
 
-fn main() {
-    human_panic::setup_panic!(
-        Metadata::new(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-            .authors("Ikey Doherty <ikey@serpentos.com>")
-            .homepage("https://github.com/serpent-os/blsforme")
-            .support("- Please file an issue at https://github.com/serpent-os/blsforme/issues")
-    );
+fn main() -> color_eyre::Result<()> {
+    color_eyre::config::HookBuilder::default()
+        .issue_url("https://github.com/serpent-os/blsforme/issues/new")
+        .add_issue_metadata("version", env!("CARGO_PKG_VERSION"))
+        .issue_filter(|kind| match kind {
+            color_eyre::ErrorKind::NonRecoverable(_) => false,
+            color_eyre::ErrorKind::Recoverable(_) => true,
+        })
+        .install()?;
 
-    formatted_builder()
-        .filter(None, log::LevelFilter::Info)
-        .init();
+    formatted_builder().init();
 
     let res = Cli::parse();
     let root = if res.image {
@@ -103,10 +103,30 @@ fn main() {
         Commands::ReportBooted => todo!(),
         Commands::RemoveKernel => todo!(),
         Commands::MountBoot => todo!(),
-        Commands::Update => todo!(),
+        Commands::Update => {
+            let probe = Topology::probe(&config)
+                .wrap_err(format!(
+                    "Unable to probe topology and block device for `{}`",
+                    config.root.path().display()
+                ))
+                .with_note(|| "Please make sure that the path definitely exists and is readable")?;
+            log::info!("Topology result: {probe:?}");
+
+            println!();
+            println!(
+                "    *  Found rootfs device: {}",
+                probe.rootfs.path.display()
+            );
+            println!(
+                "    *  Additional `/proc/cmdline`: {}",
+                probe.rootfs.root_cmdline()
+            );
+        }
         Commands::SetTimeout { timeout: _ } => todo!(),
         Commands::GetTimeout => todo!(),
         Commands::SetKernel { kernel: _ } => todo!(),
         Commands::ListKernels => todo!(),
     }
+
+    Ok(())
 }
