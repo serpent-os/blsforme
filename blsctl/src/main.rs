@@ -5,8 +5,9 @@
 //! Provides a CLI compatible with `clr-boot-manager` to be used as a drop-in
 //! replacement for Solus.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use blsforme::{Configuration, Root};
 use clap::{Parser, Subcommand};
 use human_panic::Metadata;
 use pretty_env_logger::formatted_builder;
@@ -16,15 +17,15 @@ use pretty_env_logger::formatted_builder;
 #[command(version, about)]
 struct Cli {
     /// Override base path for all boot management operations
-    #[arg(short, long)]
+    #[arg(short, long, global = true)]
     path: Option<PathBuf>,
 
     /// Force running in image mode (scripting integration)
-    #[arg(short, long)]
+    #[arg(short, long, global = true)]
     image: bool,
 
     /// Do not allow updating EFI vars
-    #[arg(short, long)]
+    #[arg(short, long, global = true)]
     no_efi_update: bool,
 
     #[command(subcommand)]
@@ -70,10 +71,32 @@ fn main() {
     );
 
     formatted_builder()
-        .filter(None, log::LevelFilter::Trace)
+        .filter(None, log::LevelFilter::Info)
         .init();
 
     let res = Cli::parse();
+    let root = if res.image {
+        // forced image mode
+        Root::Image(res.path.unwrap_or("/".into()))
+    } else if let Some(path) = res.path {
+        // Path provided, native only if it is `/`
+        if path.as_path() == Path::new("/") {
+            Root::Native(path)
+        } else {
+            Root::Image(path)
+        }
+    } else {
+        // Native operation
+        Root::Native("/".into())
+    };
+
+    let config = Configuration { root };
+
+    log::trace!("Using configuration: {config:?}");
+    println!(
+        " 🔎 Inspecting root device: {}",
+        config.root.path().display()
+    );
 
     match res.command {
         Commands::Version => todo!(),
