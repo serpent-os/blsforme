@@ -14,7 +14,7 @@ use std::{
 use blsforme::{os_release::OsRelease, topology::Topology, Configuration, Root};
 use clap::{Parser, Subcommand};
 use color_eyre::{
-    eyre::{eyre, Context},
+    eyre::{eyre, Context, Ok},
     Section,
 };
 use pretty_env_logger::formatted_builder;
@@ -125,6 +125,7 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
 }
 
 fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
+    check_permissions()?;
     let probe = Topology::probe(config)
         .wrap_err(format!(
             "Unable to probe topology and block device for `{}`",
@@ -140,6 +141,15 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
     log::info!("Root Schema: {schema:?}");
 
     Ok(probe)
+}
+
+/// Bail-out permission check for execution
+fn check_permissions() -> color_eyre::Result<()> {
+    let euid = unsafe { nix::libc::geteuid() };
+    match euid {
+        0 => Ok(()),
+        _ => Err(eyre!("blsctl must be run with root privileges to work correctly")).note("This tool must be able to mount partitions and scan partition tables to operate effectively"),
+    }
 }
 
 fn main() -> color_eyre::Result<()> {
