@@ -11,14 +11,34 @@ use thiserror::Error;
 pub mod ext4;
 
 /// Encapsulate all supported superblocks
+#[derive(Debug)]
 pub enum Superblock {
     Ext4(ext4::Superblock),
+}
+
+impl Superblock {
+    /// Filesystem UUID
+    pub fn uuid(&self) -> String {
+        match &self {
+            Superblock::Ext4(block) => block.uuid(),
+        }
+    }
+
+    /// Volume label
+    pub fn label(&self) -> Result<String, Error> {
+        match &self {
+            Superblock::Ext4(block) => Ok(block.label()?),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("unknown superblock")]
     UnknownSuperblock,
+
+    #[error("ext4: {0}")]
+    EXT4(#[from] ext4::Error),
 }
 
 /// Attempt to find a superblock decoder for the given reader
