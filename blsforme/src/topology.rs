@@ -278,7 +278,7 @@ impl Topology {
     fn rewrap_filesystem(fs: Filesystem, id: Option<FilesystemID>) -> Filesystem {
         if let Some(id) = id {
             match fs {
-                Filesystem::Btrfs { id, subvol } => Filesystem::Btrfs { id, subvol },
+                Filesystem::Btrfs { subvol, .. } => Filesystem::Btrfs { id, subvol },
                 Filesystem::Any(_) => Filesystem::Any(id),
             }
         } else {
