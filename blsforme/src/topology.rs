@@ -4,7 +4,12 @@
 
 //! Query the topology of a target system
 
-use std::{collections::HashMap, fs, io, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs, io,
+    num::ParseIntError,
+    path::{Path, PathBuf},
+};
 
 use nix::sys::stat;
 use thiserror::Error;
@@ -27,8 +32,14 @@ pub enum Error {
     #[error("unsupported root filesystem")]
     UnsupportedRootFS,
 
+    #[error("failed to decode partition id")]
+    ParseInt(#[from] ParseIntError),
+
     #[error("no `mounts` entry for {0}")]
     UnknownMount(PathBuf),
+
+    #[error("no partition {index} on device {device}")]
+    UnknownPartition { device: String, index: u32 },
 
     #[error("io {0}")]
     IO(#[from] io::Error),
@@ -117,18 +128,8 @@ impl Topology {
     /// Arguments:
     ///  - `config` - a [`crate::Configuration`]
     pub fn probe(config: &Configuration) -> Result<Self, self::Error> {
-        let efi_path = config.root.path().join("sys").join("firmware").join("efi");
-        let firmware = if efi_path.exists() {
-            Firmware::UEFI
-        } else {
-            Firmware::BIOS
-        };
-
         let device = Self::get_device_for_root(config)?;
-        Ok(Self {
-            firmware,
-            rootfs: device,
-        })
+        Self::refine_device(config, device)
     }
 
     /// Attempt cascading discovery of the the rootfs block device
@@ -196,5 +197,92 @@ impl Topology {
             filesystem: Filesystem::Any(FilesystemID::Path(fs_path.to_string_lossy().to_string())),
             path: fs_path,
         })
+    }
+
+    /// Refine block device scan for further details
+    ///
+    /// At this point we have identified the root device, and can
+    /// then scan the root disk to determine the PartUUID if applicable,
+    /// if not we can fallback to superblock scanning.
+    fn refine_device(config: &Configuration, device: BlockDevice) -> Result<Self, self::Error> {
+        let efi_path = config.root.path().join("sys").join("firmware").join("efi");
+        let firmware = if efi_path.exists() {
+            Firmware::UEFI
+        } else {
+            Firmware::BIOS
+        };
+
+        let path = fs::canonicalize(device.path)?;
+        let id = path
+            .file_name()
+            .ok_or_else(|| self::Error::UnknownMount(path.clone()))?;
+        let sysfs_child = fs::canonicalize(
+            config
+                .root
+                .path()
+                .join("sys")
+                .join("class")
+                .join("block")
+                .join(id),
+        )?;
+
+        // Grab the parent device name
+        let sysfs_parent = sysfs_child
+            .parent()
+            .and_then(|p| p.file_name())
+            .ok_or_else(|| self::Error::UnknownMount(sysfs_child.clone()))?;
+        let parent_dev = config.root.path().join("dev").join(sysfs_parent);
+
+        // Determine partition uuid
+        let part_file = sysfs_child.join("partition");
+        let fs_id = if part_file.exists() {
+            let partition_index = fs::read_to_string(part_file)?.trim().parse::<u32>()?;
+            match Self::scan_gpt_for_partuuid(parent_dev, partition_index) {
+                Ok(pt_uuid) => Some(FilesystemID::PartUUID(pt_uuid)),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+
+        Ok(Self {
+            firmware,
+            rootfs: BlockDevice {
+                path,
+                filesystem: Self::rewrap_filesystem(device.filesystem, fs_id),
+            },
+        })
+    }
+
+    /// Scan GPT partitions to gain PartUUID
+    fn scan_gpt_for_partuuid(device: impl AsRef<Path>, index: u32) -> Result<String, Error> {
+        let device = device.as_ref();
+        let mut file = fs::File::open(device)?;
+        let disk = gpt::GptConfig::new()
+            .writable(false)
+            .writable(false)
+            .initialized(true)
+            .open_from_device(Box::new(&mut file))?;
+
+        let partition =
+            disk.partitions()
+                .get(&index)
+                .ok_or_else(|| self::Error::UnknownPartition {
+                    device: device.to_string_lossy().to_string(),
+                    index,
+                })?;
+        Ok(partition.part_guid.hyphenated().to_string())
+    }
+
+    /// Rewrap Filesystem type with a new FilesystemID (PartUUID) for example
+    fn rewrap_filesystem(fs: Filesystem, id: Option<FilesystemID>) -> Filesystem {
+        if let Some(id) = id {
+            match fs {
+                Filesystem::Btrfs { id, subvol } => Filesystem::Btrfs { id, subvol },
+                Filesystem::Any(_) => Filesystem::Any(id),
+            }
+        } else {
+            fs
+        }
     }
 }
