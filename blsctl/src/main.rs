@@ -11,12 +11,14 @@ use std::{
     str::FromStr,
 };
 
+use blsctl::legacy;
 use blsforme::{os_release::OsRelease, topology::Topology, Configuration, Root};
 use clap::{Parser, Subcommand};
 use color_eyre::{
     eyre::{eyre, Context, Ok},
     Section,
 };
+
 use pretty_env_logger::formatted_builder;
 
 /// Boot Loader Specification compatible kernel/initrd/cmdline management
@@ -76,7 +78,7 @@ enum Commands {
 #[derive(Debug)]
 enum RootSchema {
     /// clr-boot-manager era, fixed namespace
-    CBM(&'static str),
+    Legacy(&'static str),
 
     /// blsforme schema
     BLS4,
@@ -111,14 +113,14 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
         "solus" => {
             if os_rel.version.name.is_some_and(|v| v.starts_with('4')) {
                 log::trace!("Legacy schema due to Solus 4 installation");
-                Ok(RootSchema::CBM("com.solus-project"))
+                Ok(RootSchema::Legacy("com.solus-project"))
             } else {
                 Ok(RootSchema::BLS4)
             }
         }
         "clear-linux-os" => {
             log::trace!("Legacy schema due to Clear Linux OS installation");
-            Ok(RootSchema::CBM("org.clearlinux"))
+            Ok(RootSchema::Legacy("org.clearlinux"))
         }
         _ => Ok(RootSchema::BLS4),
     }
@@ -139,6 +141,11 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
 
     let schema = query_schema(config)?;
     log::info!("Root Schema: {schema:?}");
+
+    if let RootSchema::Legacy(namespace) = schema {
+        let kernels = legacy::discover_kernels_legacy(namespace, config.root.path())?;
+        log::info!("Kernels: {kernels:?}");
+    }
 
     Ok(probe)
 }
