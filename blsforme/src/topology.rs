@@ -6,7 +6,8 @@
 
 use std::{
     collections::HashMap,
-    fs, io,
+    fs,
+    io::{self, Read},
     num::ParseIntError,
     path::{Path, PathBuf},
 };
@@ -16,7 +17,7 @@ use thiserror::Error;
 
 use crate::{
     mtab::{self, MountOption},
-    Configuration,
+    superblock, Configuration,
 };
 
 /// BIOS vs UEFI logic gating
@@ -40,6 +41,9 @@ pub enum Error {
 
     #[error("no partition {index} on device {device}")]
     UnknownPartition { device: String, index: u32 },
+
+    #[error("unsupported superblock: {0}")]
+    UnsupportedSuperblock(#[from] superblock::Error),
 
     #[error("io {0}")]
     IO(#[from] io::Error),
@@ -212,7 +216,7 @@ impl Topology {
             Firmware::BIOS
         };
 
-        let path = fs::canonicalize(device.path)?;
+        let path = fs::canonicalize(&device.path)?;
         let id = path
             .file_name()
             .ok_or_else(|| self::Error::UnknownMount(path.clone()))?;
@@ -242,7 +246,12 @@ impl Topology {
                 Err(_) => None,
             }
         } else {
-            None
+            // Fallback to UUID detection
+            if let Ok(sb) = Self::scan_superblock_for_uuid(&device.path) {
+                Some(sb)
+            } else {
+                None
+            }
         };
 
         Ok(Self {
@@ -284,5 +293,17 @@ impl Topology {
         } else {
             fs
         }
+    }
+
+    fn scan_superblock_for_uuid(path: impl AsRef<Path>) -> Result<FilesystemID, Error> {
+        let path = path.as_ref();
+        let mut fi = fs::File::open(path)?;
+        let mut buffer: Vec<u8> = Vec::with_capacity(2048);
+        fi.read_exact(&mut buffer)?;
+        let cursor = io::Cursor::new(buffer);
+
+        let sb = superblock::superblock_for_reader(cursor)?;
+
+        Ok(FilesystemID::UUID(sb.uuid()))
     }
 }
