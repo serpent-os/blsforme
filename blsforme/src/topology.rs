@@ -7,7 +7,7 @@
 use std::{
     collections::HashMap,
     fs,
-    io::{self, Read},
+    io::{self, Cursor, Read},
     num::ParseIntError,
     path::{Path, PathBuf},
 };
@@ -133,7 +133,24 @@ impl Topology {
     ///  - `config` - a [`crate::Configuration`]
     pub fn probe(config: &Configuration) -> Result<Self, self::Error> {
         let device = Self::get_device_for_root(config)?;
-        Self::refine_device(config, device)
+
+        // attempt to scan the superblock for basic UUID first before grabbing PartUUID
+        if let Ok(id) = Self::scan_superblock_for_uuid(&device.path) {
+            let fs = Self::rewrap_filesystem(device.filesystem, Some(id));
+            Self::refine_device(
+                config,
+                BlockDevice {
+                    filesystem: fs,
+                    ..device
+                },
+            )
+        } else {
+            log::debug!(
+                "couldn't understand superblock on {}",
+                &device.path.display()
+            );
+            Self::refine_device(config, device)
+        }
     }
 
     /// Attempt cascading discovery of the the rootfs block device
@@ -249,17 +266,6 @@ impl Topology {
             None
         };
 
-        let fs_id = if fs_id.is_none() {
-            // Fallback to UUID detection
-            if let Ok(sb) = Self::scan_superblock_for_uuid(&device.path) {
-                Some(sb)
-            } else {
-                None
-            }
-        } else {
-            fs_id
-        };
-
         Ok(Self {
             firmware,
             rootfs: BlockDevice {
@@ -301,14 +307,15 @@ impl Topology {
         }
     }
 
+    /// Scan superblock of the device for `UUID=` parameter
     fn scan_superblock_for_uuid(path: impl AsRef<Path>) -> Result<FilesystemID, Error> {
         let path = path.as_ref();
-        let mut fi = fs::File::open(path)?;
+        log::trace!("Querying superblock information for {}", path.display());
+        let fi = fs::File::open(path)?;
         let mut buffer: Vec<u8> = Vec::with_capacity(2048);
-        fi.read_exact(&mut buffer)?;
-        let cursor = io::Cursor::new(buffer);
-
-        let sb = superblock::superblock_for_reader(cursor)?;
+        fi.take(2048).read_to_end(&mut buffer)?;
+        let mut cursor = Cursor::new(&buffer);
+        let sb = superblock::superblock_for_reader(&mut cursor)?;
 
         Ok(FilesystemID::UUID(sb.uuid()))
     }

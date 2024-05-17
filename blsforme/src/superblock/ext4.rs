@@ -131,7 +131,7 @@ impl Superblock {
             Err(Error::InvalidMagic)
         } else {
             log::trace!(
-                "ext4: valid magic field for UUID={}, LABEL={}",
+                "valid magic field: UUID={} [volume label: \"{}\"]",
                 data.uuid(),
                 data.label().unwrap_or_else(|_| "[invalid utf8]".into())
             );
