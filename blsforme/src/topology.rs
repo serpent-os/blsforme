@@ -246,12 +246,18 @@ impl Topology {
                 Err(_) => None,
             }
         } else {
+            None
+        };
+
+        let fs_id = if fs_id.is_none() {
             // Fallback to UUID detection
             if let Ok(sb) = Self::scan_superblock_for_uuid(&device.path) {
                 Some(sb)
             } else {
                 None
             }
+        } else {
+            fs_id
         };
 
         Ok(Self {

@@ -114,6 +114,7 @@ name = "blsforme"
 version = "0.1.0"
 dependencies = [
  "gpt",
+ "log",
  "nix",
  "thiserror",
  "uuid",

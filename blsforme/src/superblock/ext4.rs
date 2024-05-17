@@ -130,7 +130,11 @@ impl Superblock {
         if data.magic != MAGIC {
             Err(Error::InvalidMagic)
         } else {
-            log::trace!("ext4: valid magic field for UUID={}, LABEL={}", data.uuid(), data.label().unwrap_or_else(|_| "[invalid utf8]".into()));
+            log::trace!(
+                "ext4: valid magic field for UUID={}, LABEL={}",
+                data.uuid(),
+                data.label().unwrap_or_else(|_| "[invalid utf8]".into())
+            );
             Ok(data)
         }
     }
