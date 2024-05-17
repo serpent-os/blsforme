@@ -16,6 +16,12 @@ A management tool and library enabling Linux distributions to more easily adopt 
 
 Primarily this tooling has been designed to assist the [moss](https://github.com/serpent-os/moss.git) package manager, but will remain agnostic to support the use case of [Solus](https://getsol.us) and other interested parties.
 
+## Testing
+
+    cargo build
+    sudo RUST_LOG=trace ./target/debug/blsctl status
+
+
 ## Difference to alternatives
 
 As the original author of [clr-boot-manager](https://github.com/intel/clr-boot-manager) it needs listing here as "prior art", in terms of synchronising `$BOOT` and `/usr/lib/kernel` for type 1 BLS entries.
