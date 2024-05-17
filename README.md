@@ -18,9 +18,10 @@ Primarily this tooling has been designed to assist the [moss](https://github.com
 
 ## Testing
 
-    cargo build
-    sudo RUST_LOG=trace ./target/debug/blsctl status
-
+```bash
+cargo build
+sudo RUST_LOG=trace ./target/debug/blsctl status
+```
 
 ## Difference to alternatives
 
