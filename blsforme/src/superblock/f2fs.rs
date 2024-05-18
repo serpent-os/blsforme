@@ -10,8 +10,9 @@ use std::{
     ptr,
 };
 
-use thiserror::Error;
 use uuid::Uuid;
+
+use crate::superblock::{Error, Superblock};
 
 // Constants to allow us to move away from unsafe{} APIs
 // in future, i.e. read_array(MAX_EXTENSION) ...
@@ -27,7 +28,7 @@ const MAX_ERRORS: usize = 16;
 
 #[derive(Debug)]
 #[repr(C, packed)]
-pub struct Superblock {
+pub struct F2FS {
     magic: u32,
     major_ver: u16,
     minor_ver: u16,
@@ -84,71 +85,61 @@ pub struct Device {
     total_segments: u32,
 }
 
-/// f2fs specific decoding errors
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("not a valid f2fs source")]
-    InvalidMagic,
-
-    #[error("invalid utf16 in volume label: {0}")]
-    InvalidLabel(#[from] std::string::FromUtf16Error),
-
-    #[error("io error: {0}")]
-    IO(#[from] io::Error),
-}
-
 const MAGIC: u32 = 0xF2F52010;
 const START_POSITION: u64 = 1024;
 
-impl Superblock {
-    /// Attempt to decode the Superblock from the given read stream
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, Error> {
-        const SIZE: usize = std::mem::size_of::<Superblock>();
-        let mut data: Superblock = unsafe { std::mem::zeroed() };
-        let data_sliced =
-            unsafe { slice::from_raw_parts_mut(&mut data as *mut _ as *mut u8, SIZE) };
+/// Attempt to decode the Superblock from the given read stream
+pub fn from_reader<R: Read>(reader: &mut R) -> Result<F2FS, Error> {
+    const SIZE: usize = std::mem::size_of::<F2FS>();
+    let mut data: F2FS = unsafe { std::mem::zeroed() };
+    let data_sliced = unsafe { slice::from_raw_parts_mut(&mut data as *mut _ as *mut u8, SIZE) };
 
-        // Drop unwanted bytes (Seek not possible with zstd streamed inputs)
-        io::copy(&mut reader.by_ref().take(START_POSITION), &mut io::sink())?;
-        reader.read_exact(data_sliced)?;
+    // Drop unwanted bytes (Seek not possible with zstd streamed inputs)
+    io::copy(&mut reader.by_ref().take(START_POSITION), &mut io::sink())?;
+    reader.read_exact(data_sliced)?;
 
-        if data.magic != MAGIC {
-            Err(Error::InvalidMagic)
-        } else {
-            log::trace!(
-                "valid magic field: UUID={} [volume label: \"{}\"]",
-                data.uuid(),
-                data.label().unwrap_or_else(|_| "[invalid utf8]".into())
-            );
-            Ok(data)
-        }
+    if data.magic != MAGIC {
+        Err(Error::InvalidMagic)
+    } else {
+        log::trace!(
+            "valid magic field: UUID={} [volume label: \"{}\"]",
+            data.uuid(),
+            data.label().unwrap_or_else(|_| "[invalid utf8]".into())
+        );
+        Ok(data)
     }
+}
 
+impl Superblock for F2FS {
     /// Return the encoded UUID for this superblock
-    pub fn uuid(&self) -> String {
+    fn uuid(&self) -> String {
         Uuid::from_bytes(self.uuid).hyphenated().to_string()
     }
 
     /// Return the volume label as valid utf16 String
-    pub fn label(&self) -> Result<String, Error> {
+    fn label(&self) -> Result<String, Error> {
         let vol = unsafe { ptr::read_unaligned(ptr::addr_of!(self.volume_name)) };
         let prelim_label = String::from_utf16(&vol)?;
         // Need valid grapheme step and skip (u16)\0 nul termination in fixed block size
         Ok(prelim_label.trim_end_matches('\0').to_owned())
+    }
+
+    fn kind(&self) -> super::Kind {
+        super::Kind::F2FS
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use super::Superblock;
+    use crate::superblock::{f2fs::from_reader, Superblock};
     use std::fs;
 
     #[test]
     fn test_basic() {
         let mut fi = fs::File::open("../test/blocks/f2fs.img.zst").expect("cannot open f2fs img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
-        let sb = Superblock::from_reader(&mut stream).expect("Cannot parse superblock");
+        let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");
         assert_eq!(label, "blsforme testing");
         assert_eq!(sb.uuid(), "d2c85810-4e75-4274-bc7d-a78267af7443");

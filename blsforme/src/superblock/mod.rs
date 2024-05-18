@@ -11,34 +11,31 @@ use thiserror::Error;
 pub mod btrfs;
 pub mod ext4;
 pub mod f2fs;
-
-/// Encapsulate all supported superblocks
-/// TODO: Re-evaluate use of Box when all sizes are similar.
-#[derive(Debug)]
-pub enum Superblock {
-    BTRFS(Box<btrfs::Superblock>),
-    Ext4(Box<ext4::Superblock>),
-    F2FS(Box<f2fs::Superblock>),
+pub enum Kind {
+    Btrfs,
+    Ext4,
+    F2FS,
 }
 
-impl Superblock {
-    /// Filesystem UUID
-    pub fn uuid(&self) -> String {
+impl std::fmt::Display for Kind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            Superblock::BTRFS(block) => block.uuid(),
-            Superblock::Ext4(block) => block.uuid(),
-            Superblock::F2FS(block) => block.uuid(),
+            Kind::Btrfs => f.write_str("btrfs"),
+            Kind::Ext4 => f.write_str("ext4"),
+            Kind::F2FS => f.write_str("f2fs"),
         }
     }
+}
 
-    /// Volume label
-    pub fn label(&self) -> Result<String, Error> {
-        match &self {
-            Superblock::BTRFS(_block) => Err(self::Error::UnsupportedFeature),
-            Superblock::Ext4(block) => Ok(block.label()?),
-            Superblock::F2FS(block) => Ok(block.label()?),
-        }
-    }
+pub trait Superblock: std::fmt::Debug + Sync + Send {
+    /// Return the superblock's kind
+    fn kind(&self) -> self::Kind;
+
+    /// Get the filesystem UUID
+    fn uuid(&self) -> String;
+
+    /// Get the volume label
+    fn label(&self) -> Result<String, self::Error>;
 }
 
 #[derive(Debug, Error)]
@@ -50,38 +47,38 @@ pub enum Error {
     #[error("unsupported feature")]
     UnsupportedFeature,
 
-    #[error("ext4: {0}")]
-    EXT4(#[from] ext4::Error),
+    #[error("invalid utf8 in decode: {0}")]
+    Utf8Decoding(#[from] std::str::Utf8Error),
 
-    #[error("btrfs: {0}")]
-    BTRFS(#[from] btrfs::Error),
+    #[error("invalid utf16 in decode: {0}")]
+    Utf16Decoding(#[from] std::string::FromUtf16Error),
 
-    #[error("f2fs: {0}")]
-    F2FS(#[from] f2fs::Error),
+    #[error("invalid magic in superblock")]
+    InvalidMagic,
 
     #[error("io: {0}")]
     IO(#[from] io::Error),
 }
 
 /// Attempt to find a superblock decoder for the given reader
-pub fn for_reader<R: Read + Seek>(reader: &mut R) -> Result<Superblock, Error> {
+pub fn for_reader<R: Read + Seek>(reader: &mut R) -> Result<Box<dyn Superblock>, Error> {
     reader.rewind()?;
 
     // try ext4
-    if let Ok(block) = ext4::Superblock::from_reader(reader) {
-        return Ok(Superblock::Ext4(Box::new(block)));
+    if let Ok(block) = ext4::from_reader(reader) {
+        return Ok(Box::new(block));
     }
 
-    // try btrfs now
+    // try btrfs
     reader.rewind()?;
-    if let Ok(block) = btrfs::Superblock::from_reader(reader) {
-        return Ok(Superblock::BTRFS(Box::new(block)));
+    if let Ok(block) = btrfs::from_reader(reader) {
+        return Ok(Box::new(block));
     }
 
     // try f2fs
     reader.rewind()?;
-    if let Ok(block) = f2fs::Superblock::from_reader(reader) {
-        return Ok(Superblock::F2FS(Box::new(block)));
+    if let Ok(block) = f2fs::from_reader(reader) {
+        return Ok(Box::new(block));
     }
 
     Err(Error::UnknownSuperblock)
@@ -94,7 +91,7 @@ mod tests {
         io::{Cursor, Read},
     };
 
-    use crate::superblock::Superblock;
+    use crate::superblock::Kind;
 
     use super::for_reader;
 
@@ -114,6 +111,6 @@ mod tests {
 
         let mut cursor = Cursor::new(&mut memory);
         let block = for_reader(&mut cursor).expect("Failed to find right block implementation");
-        assert!(matches!(block, Superblock::Ext4(_)));
+        assert!(matches!(block.kind(), Kind::Ext4));
     }
 }

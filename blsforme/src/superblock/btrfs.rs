@@ -9,8 +9,11 @@
 use core::slice;
 use std::io::{self, Read};
 
-use thiserror::Error;
 use uuid::Uuid;
+
+use crate::superblock::Superblock;
+
+use super::{Error, Kind};
 
 /// BTRFS superblock definition (as seen in the kernel)
 /// This is a PARTIAL representation that matches only the
@@ -18,7 +21,7 @@ use uuid::Uuid;
 /// of the UUID
 #[derive(Debug)]
 #[repr(C)]
-pub struct Superblock {
+pub struct Btrfs {
     csum: [u8; 32],
     fsid: [u8; 16],
     bytenr: u64,
@@ -30,59 +33,57 @@ pub struct Superblock {
     log_root: u64,
 }
 
-/// btrfs specific decoding errors
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("not a valid btrfs source")]
-    InvalidMagic,
-
-    #[error("io error: {0}")]
-    IO(#[from] io::Error),
-}
-
 // Superblock starts at 65536 for btrfs.
 const START_POSITION: u64 = 0x10000;
 
 // "_BHRfS_M"
 const MAGIC: u64 = 0x4D5F53665248425F;
 
-impl Superblock {
-    /// Attempt to decode the Superblock from the given read stream
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, Error> {
-        const SIZE: usize = std::mem::size_of::<Superblock>();
-        let mut data: Superblock = unsafe { std::mem::zeroed() };
-        let data_sliced =
-            unsafe { slice::from_raw_parts_mut(&mut data as *mut _ as *mut u8, SIZE) };
+/// Attempt to decode the Superblock from the given read stream
+pub fn from_reader<R: Read>(reader: &mut R) -> Result<Btrfs, Error> {
+    const SIZE: usize = std::mem::size_of::<Btrfs>();
+    let mut data: Btrfs = unsafe { std::mem::zeroed() };
+    let data_sliced = unsafe { slice::from_raw_parts_mut(&mut data as *mut _ as *mut u8, SIZE) };
 
-        // Drop unwanted bytes (Seek not possible with zstd streamed inputs)
-        io::copy(&mut reader.by_ref().take(START_POSITION), &mut io::sink())?;
-        reader.read_exact(data_sliced)?;
+    // Drop unwanted bytes (Seek not possible with zstd streamed inputs)
+    io::copy(&mut reader.by_ref().take(START_POSITION), &mut io::sink())?;
+    reader.read_exact(data_sliced)?;
 
-        if data.magic != MAGIC {
-            Err(Error::InvalidMagic)
-        } else {
-            log::trace!("valid magic field: UUID={}", data.uuid());
-            Ok(data)
-        }
+    if data.magic != MAGIC {
+        Err(Error::InvalidMagic)
+    } else {
+        log::trace!("valid magic field: UUID={}", data.uuid());
+        Ok(data)
+    }
+}
+
+impl Superblock for Btrfs {
+    /// Return the encoded UUID for this superblock
+    fn uuid(&self) -> String {
+        Uuid::from_bytes(self.fsid).hyphenated().to_string()
     }
 
-    /// Return the encoded UUID for this superblock
-    pub fn uuid(&self) -> String {
-        Uuid::from_bytes(self.fsid).hyphenated().to_string()
+    fn kind(&self) -> Kind {
+        super::Kind::Btrfs
+    }
+
+    /// We don't yet support labels here.
+    fn label(&self) -> Result<String, Error> {
+        Err(Error::UnsupportedFeature)
     }
 }
 
 #[cfg(test)]
 mod tests {
-
-    use super::Superblock;
     use std::fs;
+
+    use crate::superblock::{btrfs::from_reader, Superblock};
 
     #[test]
     fn test_basic() {
         let mut fi = fs::File::open("../test/blocks/btrfs.img.zst").expect("cannot open ext4 img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
-        let sb = Superblock::from_reader(&mut stream).expect("Cannot parse superblock");
+        let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         assert_eq!(sb.uuid(), "829d6a03-96a5-4749-9ea2-dbb6e59368b2");
     }
 }

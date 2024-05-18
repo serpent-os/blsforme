@@ -7,13 +7,14 @@
 use core::slice;
 use std::io::{self, Read};
 
-use thiserror::Error;
 use uuid::Uuid;
+
+use crate::superblock::{Error, Superblock};
 
 /// EXT4 Superblock definition (as seen in the kernel)
 #[derive(Debug)]
 #[repr(C)]
-pub struct Superblock {
+pub struct Ext4 {
     inodes_count: u32,
     block_counts_lo: u32,
     r_blocks_count_lo: u32,
@@ -100,68 +101,59 @@ pub struct Superblock {
     checksum: u32,
 }
 
-/// Ext4 specific decoding errors
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("not a valid ext source")]
-    InvalidMagic,
-
-    #[error("invalid utf8 in volume label: {0}")]
-    InvalidLabel(#[from] std::str::Utf8Error),
-
-    #[error("io error: {0}")]
-    IO(#[from] io::Error),
-}
-
 const MAGIC: u16 = 0xEF53;
 const START_POSITION: u64 = 1024;
 
-impl Superblock {
-    /// Attempt to decode the Superblock from the given read stream
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, Error> {
-        const SIZE: usize = std::mem::size_of::<Superblock>();
-        let mut data: Superblock = unsafe { std::mem::zeroed() };
-        let data_sliced =
-            unsafe { slice::from_raw_parts_mut(&mut data as *mut _ as *mut u8, SIZE) };
+/// Attempt to decode the Superblock from the given read stream
+pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ext4, Error> {
+    const SIZE: usize = std::mem::size_of::<Ext4>();
+    let mut data: Ext4 = unsafe { std::mem::zeroed() };
+    let data_sliced = unsafe { slice::from_raw_parts_mut(&mut data as *mut _ as *mut u8, SIZE) };
 
-        // Drop unwanted bytes (Seek not possible with zstd streamed inputs)
-        io::copy(&mut reader.by_ref().take(START_POSITION), &mut io::sink())?;
-        reader.read_exact(data_sliced)?;
+    // Drop unwanted bytes (Seek not possible with zstd streamed inputs)
+    io::copy(&mut reader.by_ref().take(START_POSITION), &mut io::sink())?;
+    reader.read_exact(data_sliced)?;
 
-        if data.magic != MAGIC {
-            Err(Error::InvalidMagic)
-        } else {
-            log::trace!(
-                "valid magic field: UUID={} [volume label: \"{}\"]",
-                data.uuid(),
-                data.label().unwrap_or_else(|_| "[invalid utf8]".into())
-            );
-            Ok(data)
-        }
+    if data.magic != MAGIC {
+        Err(Error::InvalidMagic)
+    } else {
+        log::trace!(
+            "valid magic field: UUID={} [volume label: \"{}\"]",
+            data.uuid(),
+            data.label().unwrap_or_else(|_| "[invalid utf8]".into())
+        );
+        Ok(data)
     }
+}
 
+impl super::Superblock for Ext4 {
     /// Return the encoded UUID for this superblock
-    pub fn uuid(&self) -> String {
+    fn uuid(&self) -> String {
         Uuid::from_bytes(self.uuid).hyphenated().to_string()
     }
 
     /// Return the volume label as valid utf8
-    pub fn label(&self) -> Result<String, Error> {
+    fn label(&self) -> Result<String, super::Error> {
         Ok(std::str::from_utf8(&self.volume_name)?.into())
+    }
+
+    fn kind(&self) -> super::Kind {
+        super::Kind::Ext4
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use super::Superblock;
     use std::fs;
+
+    use crate::superblock::{ext4::from_reader, Superblock};
 
     #[test]
     fn test_basic() {
         let mut fi = fs::File::open("../test/blocks/ext4.img.zst").expect("cannot open ext4 img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
-        let sb = Superblock::from_reader(&mut stream).expect("Cannot parse superblock");
+        let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");
         assert_eq!(label, "blsforme testing");
         assert_eq!(sb.uuid(), "731af94c-9990-4eed-944d-5d230dbe8a0d");

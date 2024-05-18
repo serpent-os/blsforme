@@ -316,6 +316,7 @@ impl Topology {
         fi.take(2048).read_to_end(&mut buffer)?;
         let mut cursor = Cursor::new(&buffer);
         let sb = superblock::for_reader(&mut cursor)?;
+        log::trace!("detected superblock: {}", sb.kind());
 
         Ok(FilesystemID::UUID(sb.uuid()))
     }
