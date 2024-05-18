@@ -10,6 +10,7 @@ use thiserror::Error;
 
 pub mod btrfs;
 pub mod ext4;
+pub mod f2fs;
 
 /// Encapsulate all supported superblocks
 /// TODO: Re-evaluate use of Box when all sizes are similar.
