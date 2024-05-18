@@ -11,3 +11,6 @@ log.workspace = true
 nix.workspace = true
 thiserror.workspace = true
 uuid = { version = "1.8.0", features = ["v8"] }
+
+[dev-dependencies]
+zstd = "0.13.1"

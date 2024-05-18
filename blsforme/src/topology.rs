@@ -315,7 +315,7 @@ impl Topology {
         let mut buffer: Vec<u8> = Vec::with_capacity(2048);
         fi.take(2048).read_to_end(&mut buffer)?;
         let mut cursor = Cursor::new(&buffer);
-        let sb = superblock::superblock_for_reader(&mut cursor)?;
+        let sb = superblock::for_reader(&mut cursor)?;
 
         Ok(FilesystemID::UUID(sb.uuid()))
     }

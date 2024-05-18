@@ -5,7 +5,7 @@
 //! EXT4 superblock handling
 
 use core::slice;
-use std::io::{self, Read, Seek};
+use std::io::{self, Read};
 
 use thiserror::Error;
 use uuid::Uuid;
@@ -114,17 +114,18 @@ pub enum Error {
 }
 
 const MAGIC: u16 = 0xEF53;
+const START_POSITION: u64 = 1024;
 
 impl Superblock {
     /// Attempt to decode the Superblock from the given read stream
-    pub fn from_reader<R: Read + Seek>(reader: &mut R) -> Result<Self, Error> {
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, Error> {
         const SIZE: usize = std::mem::size_of::<Superblock>();
         let mut data: Superblock = unsafe { std::mem::zeroed() };
         let data_sliced =
             unsafe { slice::from_raw_parts_mut(&mut data as *mut _ as *mut u8, SIZE) };
 
-        // Skip to 1024, read 1024 bytes
-        reader.seek(std::io::SeekFrom::Start(1024))?;
+        // Drop unwanted bytes (Seek not possible with zstd streamed inputs)
+        io::copy(&mut reader.by_ref().take(START_POSITION), &mut io::sink())?;
         reader.read_exact(data_sliced)?;
 
         if data.magic != MAGIC {
@@ -158,8 +159,9 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let mut fi = fs::File::open("../test/blocks/ext4.img").expect("cannot open ext4 img");
-        let sb = Superblock::from_reader(&mut fi).expect("Cannot parse superblock");
+        let mut fi = fs::File::open("../test/blocks/ext4.img.zst").expect("cannot open ext4 img");
+        let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
+        let sb = Superblock::from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");
         assert_eq!(label, "blsforme testing");
         assert_eq!(sb.uuid(), "731af94c-9990-4eed-944d-5d230dbe8a0d");

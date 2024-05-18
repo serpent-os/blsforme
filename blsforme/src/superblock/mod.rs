@@ -4,7 +4,7 @@
 
 //! Superblock detection for various filesystems
 
-use std::io::{Read, Seek};
+use std::io::{self, Read, Seek};
 
 use thiserror::Error;
 
@@ -51,13 +51,18 @@ pub enum Error {
 
     #[error("btrfs: {0}")]
     BTRFS(#[from] btrfs::Error),
+
+    #[error("io: {0}")]
+    IO(#[from] io::Error),
 }
 
 /// Attempt to find a superblock decoder for the given reader
-pub fn superblock_for_reader<R: Read + Seek>(reader: &mut R) -> Result<Superblock, Error> {
+pub fn for_reader<R: Read + Seek>(reader: &mut R) -> Result<Superblock, Error> {
+    reader.seek(io::SeekFrom::Start(0))?;
     if let Ok(block) = ext4::Superblock::from_reader(reader) {
         Ok(Superblock::Ext4(Box::new(block)))
     } else if let Ok(block) = btrfs::Superblock::from_reader(reader) {
+        reader.seek(io::SeekFrom::Start(0))?;
         Ok(Superblock::BTRFS(Box::new(block)))
     } else {
         Err(Error::UnknownSuperblock)
@@ -66,18 +71,31 @@ pub fn superblock_for_reader<R: Read + Seek>(reader: &mut R) -> Result<Superbloc
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{
+        fs,
+        io::{Cursor, Read},
+    };
 
     use crate::superblock::Superblock;
 
-    use super::superblock_for_reader;
+    use super::for_reader;
 
     #[test]
     fn test_determination() {
+        // Swings and roundabouts: Unpack ztd ext4 image in memory to get the Seekable trait we need
+        // While each Superblock API is non-seekable, we enforce superblock::for_reader to be seekable
+        // to make sure we pre-read a blob and pass it in for rewind/speed.
         let mut fi =
-            fs::File::open("../test/blocks/ext4.img").expect("Cannot find ext4 test image");
-        let block =
-            superblock_for_reader(&mut fi).expect("Failed to find right block implementation");
+            fs::File::open("../test/blocks/ext4.img.zst").expect("Cannot find ext4 test image");
+        let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
+        // Roughly 6mib unpack target needed
+        let mut memory = Vec::with_capacity(6 * 1024 * 1024);
+        stream
+            .read_to_end(&mut memory)
+            .expect("Could not unpack ext4 filesystem in memory");
+
+        let mut cursor = Cursor::new(&mut memory);
+        let block = for_reader(&mut cursor).expect("Failed to find right block implementation");
         assert!(matches!(block, Superblock::Ext4(_)));
     }
 }
