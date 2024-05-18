@@ -65,18 +65,26 @@ pub enum Error {
 
 /// Attempt to find a superblock decoder for the given reader
 pub fn for_reader<R: Read + Seek>(reader: &mut R) -> Result<Superblock, Error> {
-    reader.seek(io::SeekFrom::Start(0))?;
+    reader.rewind()?;
+
+    // try ext4
     if let Ok(block) = ext4::Superblock::from_reader(reader) {
-        Ok(Superblock::Ext4(Box::new(block)))
-    } else if let Ok(block) = btrfs::Superblock::from_reader(reader) {
-        reader.seek(io::SeekFrom::Start(0))?;
-        Ok(Superblock::BTRFS(Box::new(block)))
-    } else if let Ok(block) = f2fs::Superblock::from_reader(reader) {
-        reader.seek(io::SeekFrom::Start(0))?;
-        Ok(Superblock::F2FS(Box::new(block)))
-    } else {
-        Err(Error::UnknownSuperblock)
+        return Ok(Superblock::Ext4(Box::new(block)));
     }
+
+    // try btrfs now
+    reader.rewind()?;
+    if let Ok(block) = btrfs::Superblock::from_reader(reader) {
+        return Ok(Superblock::BTRFS(Box::new(block)));
+    }
+
+    // try f2fs
+    reader.rewind()?;
+    if let Ok(block) = f2fs::Superblock::from_reader(reader) {
+        return Ok(Superblock::F2FS(Box::new(block)));
+    }
+
+    Err(Error::UnknownSuperblock)
 }
 
 #[cfg(test)]
