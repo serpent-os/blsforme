@@ -18,6 +18,7 @@ pub mod f2fs;
 pub enum Superblock {
     BTRFS(Box<btrfs::Superblock>),
     Ext4(Box<ext4::Superblock>),
+    F2FS(Box<f2fs::Superblock>),
 }
 
 impl Superblock {
@@ -26,6 +27,7 @@ impl Superblock {
         match &self {
             Superblock::BTRFS(block) => block.uuid(),
             Superblock::Ext4(block) => block.uuid(),
+            Superblock::F2FS(block) => block.uuid(),
         }
     }
 
@@ -34,6 +36,7 @@ impl Superblock {
         match &self {
             Superblock::BTRFS(_block) => Err(self::Error::UnsupportedFeature),
             Superblock::Ext4(block) => Ok(block.label()?),
+            Superblock::F2FS(block) => Ok(block.label()?),
         }
     }
 }
@@ -53,6 +56,9 @@ pub enum Error {
     #[error("btrfs: {0}")]
     BTRFS(#[from] btrfs::Error),
 
+    #[error("f2fs: {0}")]
+    F2FS(#[from] f2fs::Error),
+
     #[error("io: {0}")]
     IO(#[from] io::Error),
 }
@@ -65,6 +71,9 @@ pub fn for_reader<R: Read + Seek>(reader: &mut R) -> Result<Superblock, Error> {
     } else if let Ok(block) = btrfs::Superblock::from_reader(reader) {
         reader.seek(io::SeekFrom::Start(0))?;
         Ok(Superblock::BTRFS(Box::new(block)))
+    } else if let Ok(block) = f2fs::Superblock::from_reader(reader) {
+        reader.seek(io::SeekFrom::Start(0))?;
+        Ok(Superblock::F2FS(Box::new(block)))
     } else {
         Err(Error::UnknownSuperblock)
     }
