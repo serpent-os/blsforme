@@ -126,15 +126,18 @@ mod tests {
             ("xfs", Kind::XFS),
         ];
 
+        // Pre-allocate a buffer for determination tests
+        let mut memory: Vec<u8> = Vec::with_capacity(6 * 1024 * 1024);
+
         for (fsname, _kind) in tests.into_iter() {
             // Swings and roundabouts: Unpack ztd image in memory to get the Seekable trait we need
             // While each Superblock API is non-seekable, we enforce superblock::for_reader to be seekable
             // to make sure we pre-read a blob and pass it in for rewind/speed.
+            memory.clear();
+
             let mut fi = fs::File::open(format!("../test/blocks/{fsname}.img.zst"))
                 .expect("Cannot find test image");
             let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
-            // Roughly 6mib unpack target needed
-            let mut memory = Vec::with_capacity(6 * 1024 * 1024);
             stream
                 .read_to_end(&mut memory)
                 .expect("Could not unpack ext4 filesystem in memory");
