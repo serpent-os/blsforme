@@ -12,12 +12,16 @@ pub mod btrfs;
 pub mod ext4;
 pub mod f2fs;
 pub mod luks2;
+pub mod xfs;
 
+/// Supported list of superblock readers
+#[derive(Debug)]
 pub enum Kind {
     Btrfs,
     Ext4,
     LUKS2,
     F2FS,
+    XFS,
 }
 
 impl std::fmt::Display for Kind {
@@ -27,6 +31,7 @@ impl std::fmt::Display for Kind {
             Kind::Ext4 => f.write_str("ext4"),
             Kind::LUKS2 => f.write_str("luks2"),
             Kind::F2FS => f.write_str("f2fs"),
+            Kind::XFS => f.write_str("xfs"),
         }
     }
 }
@@ -85,6 +90,12 @@ pub fn for_reader<R: Read + Seek>(reader: &mut R) -> Result<Box<dyn Superblock>,
         return Ok(Box::new(block));
     }
 
+    // try xfs
+    reader.rewind()?;
+    if let Ok(block) = xfs::from_reader(reader) {
+        return Ok(Box::new(block));
+    }
+
     // try luks2
     reader.rewind()?;
     if let Ok(block) = luks2::from_reader(reader) {
@@ -121,6 +132,7 @@ mod tests {
 
         let mut cursor = Cursor::new(&mut memory);
         let block = for_reader(&mut cursor).expect("Failed to find right block implementation");
+        eprintln!("block matched to {}", block.kind());
         assert!(matches!(block.kind(), Kind::Ext4));
     }
 }

@@ -4,7 +4,7 @@ We provide a number of raw filesystem images (without content) to verify
 the `superblock` crate, providing CI for filesystems that may change over time.
 
 Primarily `blsforme` needs to understand the UUID for `/proc/cmdline` generation,
-however extraction of volume label is also supported (`blsforme testing` in all
+however extraction of volume label is also supported (`blsforme testing` in most
 test images)
 
 ## btrfs.img.zst
@@ -25,3 +25,10 @@ test images)
     Versio   : LUKS2
     LUKS UUID: be373cae-2bd1-4ad5-953f-3463b2e53e59
     EXT4 UUID: e27c657e-d03c-4f89-b36d-2de6880bc2a1
+
+## xfs.img
+
+Limited to 12-char volume name
+
+    UUID : 45e8a3bf-8114-400f-95b0-380d0fb7d42d
+    LABEL: BLSFORME
