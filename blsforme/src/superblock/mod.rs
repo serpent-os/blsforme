@@ -118,21 +118,31 @@ mod tests {
 
     #[test]
     fn test_determination() {
-        // Swings and roundabouts: Unpack ztd ext4 image in memory to get the Seekable trait we need
-        // While each Superblock API is non-seekable, we enforce superblock::for_reader to be seekable
-        // to make sure we pre-read a blob and pass it in for rewind/speed.
-        let mut fi =
-            fs::File::open("../test/blocks/ext4.img.zst").expect("Cannot find ext4 test image");
-        let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
-        // Roughly 6mib unpack target needed
-        let mut memory = Vec::with_capacity(6 * 1024 * 1024);
-        stream
-            .read_to_end(&mut memory)
-            .expect("Could not unpack ext4 filesystem in memory");
+        let tests = vec![
+            ("btrfs", Kind::Btrfs),
+            ("ext4", Kind::Ext4),
+            ("f2fs", Kind::F2FS),
+            ("luks+ext4", Kind::LUKS2),
+            ("xfs", Kind::XFS),
+        ];
 
-        let mut cursor = Cursor::new(&mut memory);
-        let block = for_reader(&mut cursor).expect("Failed to find right block implementation");
-        eprintln!("block matched to {}", block.kind());
-        assert!(matches!(block.kind(), Kind::Ext4));
+        for (fsname, _kind) in tests.into_iter() {
+            // Swings and roundabouts: Unpack ztd image in memory to get the Seekable trait we need
+            // While each Superblock API is non-seekable, we enforce superblock::for_reader to be seekable
+            // to make sure we pre-read a blob and pass it in for rewind/speed.
+            let mut fi = fs::File::open(format!("../test/blocks/{fsname}.img.zst"))
+                .expect("Cannot find test image");
+            let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
+            // Roughly 6mib unpack target needed
+            let mut memory = Vec::with_capacity(6 * 1024 * 1024);
+            stream
+                .read_to_end(&mut memory)
+                .expect("Could not unpack ext4 filesystem in memory");
+
+            let mut cursor = Cursor::new(&mut memory);
+            let block = for_reader(&mut cursor).expect("Failed to find right block implementation");
+            eprintln!("{fsname}.img.zstd: superblock matched to {}", block.kind());
+            assert!(matches!(block.kind(), _kind));
+        }
     }
 }
