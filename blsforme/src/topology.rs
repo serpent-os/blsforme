@@ -312,8 +312,8 @@ impl Topology {
         let path = path.as_ref();
         log::trace!("Querying superblock information for {}", path.display());
         let fi = fs::File::open(path)?;
-        let mut buffer: Vec<u8> = Vec::with_capacity(2048);
-        fi.take(2048).read_to_end(&mut buffer)?;
+        let mut buffer: Vec<u8> = Vec::with_capacity(2 * 1024 * 1024);
+        fi.take(2 * 1024 * 1024).read_to_end(&mut buffer)?;
         let mut cursor = Cursor::new(&buffer);
         let sb = superblock::for_reader(&mut cursor)?;
         log::trace!("detected superblock: {}", sb.kind());
