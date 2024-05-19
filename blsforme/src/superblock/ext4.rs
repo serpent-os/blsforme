@@ -119,7 +119,7 @@ pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ext4, Error> {
     } else {
         log::trace!(
             "valid magic field: UUID={} [volume label: \"{}\"]",
-            data.uuid(),
+            data.uuid()?,
             data.label().unwrap_or_else(|_| "[invalid utf8]".into())
         );
         Ok(data)
@@ -128,8 +128,8 @@ pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ext4, Error> {
 
 impl super::Superblock for Ext4 {
     /// Return the encoded UUID for this superblock
-    fn uuid(&self) -> String {
-        Uuid::from_bytes(self.uuid).hyphenated().to_string()
+    fn uuid(&self) -> Result<String, Error> {
+        Ok(Uuid::from_bytes(self.uuid).hyphenated().to_string())
     }
 
     /// Return the volume label as valid utf8
@@ -156,6 +156,6 @@ mod tests {
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");
         assert_eq!(label, "blsforme testing");
-        assert_eq!(sb.uuid(), "731af94c-9990-4eed-944d-5d230dbe8a0d");
+        assert_eq!(sb.uuid().unwrap(), "731af94c-9990-4eed-944d-5d230dbe8a0d");
     }
 }

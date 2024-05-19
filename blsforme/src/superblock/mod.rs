@@ -11,9 +11,12 @@ use thiserror::Error;
 pub mod btrfs;
 pub mod ext4;
 pub mod f2fs;
+pub mod luks2;
+
 pub enum Kind {
     Btrfs,
     Ext4,
+    LUKS2,
     F2FS,
 }
 
@@ -22,6 +25,7 @@ impl std::fmt::Display for Kind {
         match &self {
             Kind::Btrfs => f.write_str("btrfs"),
             Kind::Ext4 => f.write_str("ext4"),
+            Kind::LUKS2 => f.write_str("luks2"),
             Kind::F2FS => f.write_str("f2fs"),
         }
     }
@@ -32,7 +36,7 @@ pub trait Superblock: std::fmt::Debug + Sync + Send {
     fn kind(&self) -> self::Kind;
 
     /// Get the filesystem UUID
-    fn uuid(&self) -> String;
+    fn uuid(&self) -> Result<String, self::Error>;
 
     /// Get the volume label
     fn label(&self) -> Result<String, self::Error>;
@@ -78,6 +82,12 @@ pub fn for_reader<R: Read + Seek>(reader: &mut R) -> Result<Box<dyn Superblock>,
     // try f2fs
     reader.rewind()?;
     if let Ok(block) = f2fs::from_reader(reader) {
+        return Ok(Box::new(block));
+    }
+
+    // try luks2
+    reader.rewind()?;
+    if let Ok(block) = luks2::from_reader(reader) {
         return Ok(Box::new(block));
     }
 

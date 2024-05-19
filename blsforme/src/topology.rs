@@ -318,6 +318,6 @@ impl Topology {
         let sb = superblock::for_reader(&mut cursor)?;
         log::trace!("detected superblock: {}", sb.kind());
 
-        Ok(FilesystemID::UUID(sb.uuid()))
+        Ok(FilesystemID::UUID(sb.uuid()?))
     }
 }

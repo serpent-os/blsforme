@@ -103,7 +103,7 @@ pub fn from_reader<R: Read>(reader: &mut R) -> Result<F2FS, Error> {
     } else {
         log::trace!(
             "valid magic field: UUID={} [volume label: \"{}\"]",
-            data.uuid(),
+            data.uuid()?,
             data.label().unwrap_or_else(|_| "[invalid utf8]".into())
         );
         Ok(data)
@@ -112,8 +112,8 @@ pub fn from_reader<R: Read>(reader: &mut R) -> Result<F2FS, Error> {
 
 impl Superblock for F2FS {
     /// Return the encoded UUID for this superblock
-    fn uuid(&self) -> String {
-        Uuid::from_bytes(self.uuid).hyphenated().to_string()
+    fn uuid(&self) -> Result<String, Error> {
+        Ok(Uuid::from_bytes(self.uuid).hyphenated().to_string())
     }
 
     /// Return the volume label as valid utf16 String
@@ -142,6 +142,6 @@ mod tests {
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");
         assert_eq!(label, "blsforme testing");
-        assert_eq!(sb.uuid(), "d2c85810-4e75-4274-bc7d-a78267af7443");
+        assert_eq!(sb.uuid().unwrap(), "d2c85810-4e75-4274-bc7d-a78267af7443");
     }
 }

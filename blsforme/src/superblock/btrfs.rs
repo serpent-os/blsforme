@@ -52,15 +52,15 @@ pub fn from_reader<R: Read>(reader: &mut R) -> Result<Btrfs, Error> {
     if data.magic != MAGIC {
         Err(Error::InvalidMagic)
     } else {
-        log::trace!("valid magic field: UUID={}", data.uuid());
+        log::trace!("valid magic field: UUID={}", data.uuid()?);
         Ok(data)
     }
 }
 
 impl Superblock for Btrfs {
     /// Return the encoded UUID for this superblock
-    fn uuid(&self) -> String {
-        Uuid::from_bytes(self.fsid).hyphenated().to_string()
+    fn uuid(&self) -> Result<String, Error> {
+        Ok(Uuid::from_bytes(self.fsid).hyphenated().to_string())
     }
 
     fn kind(&self) -> Kind {
@@ -84,6 +84,6 @@ mod tests {
         let mut fi = fs::File::open("../test/blocks/btrfs.img.zst").expect("cannot open ext4 img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
-        assert_eq!(sb.uuid(), "829d6a03-96a5-4749-9ea2-dbb6e59368b2");
+        assert_eq!(sb.uuid().unwrap(), "829d6a03-96a5-4749-9ea2-dbb6e59368b2");
     }
 }
