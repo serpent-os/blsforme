@@ -208,8 +208,8 @@ impl Topology {
         let major = stat::major(st.st_dev);
         let minor = stat::minor(st.st_dev);
         let path = config
-            .root
-            .path()
+            .vfs
+            .join("sys")
             .join("dev")
             .join("block")
             .join(format!("{major}:{minor}"));
@@ -226,7 +226,7 @@ impl Topology {
     /// then scan the root disk to determine the PartUUID if applicable,
     /// if not we can fallback to superblock scanning.
     fn refine_device(config: &Configuration, device: BlockDevice) -> Result<Self, self::Error> {
-        let efi_path = config.root.path().join("sys").join("firmware").join("efi");
+        let efi_path = config.vfs.join("sys").join("firmware").join("efi");
         let firmware = if efi_path.exists() {
             Firmware::UEFI
         } else {
@@ -237,22 +237,15 @@ impl Topology {
         let id = path
             .file_name()
             .ok_or_else(|| self::Error::UnknownMount(path.clone()))?;
-        let sysfs_child = fs::canonicalize(
-            config
-                .root
-                .path()
-                .join("sys")
-                .join("class")
-                .join("block")
-                .join(id),
-        )?;
+        let sysfs_child =
+            fs::canonicalize(config.vfs.join("sys").join("class").join("block").join(id))?;
 
         // Grab the parent device name
         let sysfs_parent = sysfs_child
             .parent()
             .and_then(|p| p.file_name())
             .ok_or_else(|| self::Error::UnknownMount(sysfs_child.clone()))?;
-        let parent_dev = config.root.path().join("dev").join(sysfs_parent);
+        let parent_dev = config.vfs.join("dev").join(sysfs_parent);
 
         // Determine partition uuid
         let part_file = sysfs_child.join("partition");

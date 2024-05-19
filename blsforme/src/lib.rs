@@ -15,6 +15,9 @@ pub mod topology;
 pub struct Configuration {
     /// Root of all operations
     pub root: Root,
+
+    /// Where we can find `sysfs` `proc` etc
+    pub vfs: PathBuf,
 }
 
 /// Wrap a root into a strong type to avoid confusion

@@ -194,7 +194,10 @@ fn main() -> color_eyre::Result<()> {
         Root::Native("/".into())
     };
 
-    let config = Configuration { root };
+    let config = Configuration {
+        root,
+        vfs: "/".into(),
+    };
 
     log::trace!("Using configuration: {config:?}");
     log::info!("Inspecting root device: {}", config.root.path().display());
