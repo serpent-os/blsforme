@@ -12,10 +12,10 @@ use std::{
 };
 
 use blsctl::legacy;
-use blsforme::{os_release::OsRelease, topology::Topology, Configuration, Root};
+use blsforme::{os_release::OsRelease, Configuration, Root};
 use clap::{Parser, Subcommand};
 use color_eyre::{
-    eyre::{eyre, Context, Ok},
+    eyre::{eyre, Ok},
     Section,
 };
 
@@ -126,9 +126,9 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
     }
 }
 
-fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
+fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     check_permissions()?;
-    let probe = Topology::probe(config)
+    /*let probe = Topology::probe(config)
         .wrap_err(format!(
             "Unable to probe topology and block device for `{}`",
             config.root.path().display()
@@ -137,7 +137,7 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
     log::trace!("Topology result: {probe:?}");
 
     log::info!("Using rootfs device: {}", probe.rootfs.path.display());
-    log::info!("Additional /proc/cmdline: {}", probe.rootfs.root_cmdline());
+    log::info!("Additional /proc/cmdline: {}", probe.rootfs.root_cmdline());*/
 
     let schema = query_schema(config)?;
     log::info!("Root Schema: {schema:?}");
@@ -147,7 +147,7 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<Topology> {
         log::info!("Kernels: {kernels:?}");
     }
 
-    Ok(probe)
+    Ok(())
 }
 
 /// Bail-out permission check for execution
@@ -213,7 +213,7 @@ fn main() -> color_eyre::Result<()> {
         Commands::SetKernel { kernel: _ } => todo!(),
         Commands::ListKernels => todo!(),
         Commands::Status => {
-            let _ = inspect_root(&config)?;
+            inspect_root(&config)?;
         }
     }
 
