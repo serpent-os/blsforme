@@ -6,14 +6,13 @@
 //! TODO: Add full representation of the superblock to allow us to
 //! discover volumes and the root label.
 
-use core::slice;
-use std::io::{self, Read};
-
+use crate::{Error, Kind, Superblock};
+use log;
+use std::{
+    io::{self, Read},
+    slice,
+};
 use uuid::Uuid;
-
-use crate::superblock::Superblock;
-
-use super::{Error, Kind};
 
 /// BTRFS superblock definition (as seen in the kernel)
 /// This is a PARTIAL representation that matches only the
@@ -77,11 +76,11 @@ impl Superblock for Btrfs {
 mod tests {
     use std::fs;
 
-    use crate::superblock::{btrfs::from_reader, Superblock};
+    use crate::{btrfs::from_reader, Superblock};
 
     #[test]
     fn test_basic() {
-        let mut fi = fs::File::open("../test/blocks/btrfs.img.zst").expect("cannot open ext4 img");
+        let mut fi = fs::File::open("tests/btrfs.img.zst").expect("cannot open ext4 img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         assert_eq!(sb.uuid().unwrap(), "829d6a03-96a5-4749-9ea2-dbb6e59368b2");

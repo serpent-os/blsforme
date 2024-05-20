@@ -9,9 +9,12 @@ default-members = [
 members = [
     "blsctl",
     "blsforme",
+    "crates/*",
 ]
 
 [workspace.dependencies]
 log = "0.4.21"
 thiserror = "1.0.61"
 nix = { version = "0.28.0", features = ["fs"] }
+uuid = { version = "1.8.0", features = ["v8"] }
+zstd = "0.13.1"

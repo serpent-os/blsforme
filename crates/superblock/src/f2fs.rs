@@ -4,15 +4,12 @@
 
 //! F2FS superblock handling
 
-use core::slice;
+use crate::{Error, Kind, Superblock};
 use std::{
     io::{self, Read},
-    ptr,
+    ptr, slice,
 };
-
 use uuid::Uuid;
-
-use crate::superblock::{Error, Superblock};
 
 // Constants to allow us to move away from unsafe{} APIs
 // in future, i.e. read_array(MAX_EXTENSION) ...
@@ -124,20 +121,20 @@ impl Superblock for F2FS {
         Ok(prelim_label.trim_end_matches('\0').to_owned())
     }
 
-    fn kind(&self) -> super::Kind {
-        super::Kind::F2FS
+    fn kind(&self) -> Kind {
+        Kind::F2FS
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::superblock::{f2fs::from_reader, Superblock};
+    use crate::{f2fs::from_reader, Superblock};
     use std::fs;
 
     #[test]
     fn test_basic() {
-        let mut fi = fs::File::open("../test/blocks/f2fs.img.zst").expect("cannot open f2fs img");
+        let mut fi = fs::File::open("tests/f2fs.img.zst").expect("cannot open f2fs img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");

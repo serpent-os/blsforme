@@ -17,7 +17,7 @@ use thiserror::Error;
 
 use crate::{
     mtab::{self, MountOption},
-    superblock, Configuration,
+    Configuration,
 };
 
 /// BIOS vs UEFI logic gating

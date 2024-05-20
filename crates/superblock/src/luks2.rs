@@ -4,10 +4,9 @@
 
 //! LUKS2 superblock support
 
-use std::slice;
-use std::{io::Read, ptr};
-
-use super::{Error, Superblock};
+use crate::{Error, Kind, Superblock};
+use log;
+use std::{io::Read, ptr, slice};
 
 const MAGIC_LEN: usize = 6;
 const LABEL_LEN: usize = 48;
@@ -62,8 +61,8 @@ pub fn from_reader<R: Read>(reader: &mut R) -> Result<Luks2, Error> {
 }
 
 impl Superblock for Luks2 {
-    fn kind(&self) -> super::Kind {
-        super::Kind::LUKS2
+    fn kind(&self) -> Kind {
+        Kind::LUKS2
     }
 
     /// NOTE: LUKS2 stores string UUID rather than 128-bit sequence..
@@ -86,13 +85,12 @@ impl Superblock for Luks2 {
 #[cfg(test)]
 mod tests {
 
-    use crate::superblock::{luks2::from_reader, Superblock};
+    use crate::{luks2::from_reader, Superblock};
     use std::fs;
 
     #[test]
     fn test_basic() {
-        let mut fi =
-            fs::File::open("../test/blocks/luks+ext4.img.zst").expect("cannot open luks2 img");
+        let mut fi = fs::File::open("tests/luks+ext4.img.zst").expect("cannot open luks2 img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         assert_eq!(sb.uuid().unwrap(), "be373cae-2bd1-4ad5-953f-3463b2e53e59");

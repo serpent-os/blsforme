@@ -4,12 +4,13 @@
 
 //! EXT4 superblock handling
 
-use core::slice;
-use std::io::{self, Read};
-
+use crate::{Error, Kind, Superblock};
+use log;
+use std::{
+    io::{self, Read},
+    slice,
+};
 use uuid::Uuid;
-
-use crate::superblock::{Error, Superblock};
 
 /// EXT4 Superblock definition (as seen in the kernel)
 #[derive(Debug)]
@@ -137,8 +138,8 @@ impl super::Superblock for Ext4 {
         Ok(std::str::from_utf8(&self.volume_name)?.into())
     }
 
-    fn kind(&self) -> super::Kind {
-        super::Kind::Ext4
+    fn kind(&self) -> Kind {
+        Kind::Ext4
     }
 }
 
@@ -147,11 +148,11 @@ mod tests {
 
     use std::fs;
 
-    use crate::superblock::{ext4::from_reader, Superblock};
+    use crate::{ext4::from_reader, Superblock};
 
     #[test]
     fn test_basic() {
-        let mut fi = fs::File::open("../test/blocks/ext4.img.zst").expect("cannot open ext4 img");
+        let mut fi = fs::File::open("tests/ext4.img.zst").expect("cannot open ext4 img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");

@@ -4,11 +4,9 @@
 
 //! XFS superblock handling
 
+use crate::{Error, Kind, Superblock};
 use std::{io::Read, slice};
-
 use uuid::Uuid;
-
-use super::{Error, Superblock};
 
 // XFS typedefs
 type RfsBlock = u64;
@@ -116,8 +114,8 @@ pub fn from_reader<R: Read>(reader: &mut R) -> Result<XFS, Error> {
 }
 
 impl Superblock for XFS {
-    fn kind(&self) -> super::Kind {
-        super::Kind::XFS
+    fn kind(&self) -> Kind {
+        Kind::XFS
     }
 
     /// Return `uuid` as a properly formatted 128-bit UUID
@@ -136,12 +134,12 @@ impl Superblock for XFS {
 #[cfg(test)]
 mod tests {
 
-    use crate::superblock::{xfs::from_reader, Superblock};
+    use crate::{xfs::from_reader, Superblock};
     use std::fs;
 
     #[test]
     fn test_basic() {
-        let mut fi = fs::File::open("../test/blocks/xfs.img.zst").expect("cannot open xfs img");
+        let mut fi = fs::File::open("tests/xfs.img.zst").expect("cannot open xfs img");
         let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
         let sb = from_reader(&mut stream).expect("Cannot parse superblock");
         let label = sb.label().expect("Cannot determine volume name");
