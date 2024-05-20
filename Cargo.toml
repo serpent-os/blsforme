@@ -4,6 +4,7 @@ resolver = "2"
 default-members = [
     "blsctl",
     "blsforme",
+    "crates/*",
 ]
 
 members = [

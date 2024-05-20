@@ -23,6 +23,7 @@ pub struct Mount<'a> {
 }
 
 /// Filesystem specific mount option, i.e `subvol=root`
+#[derive(Debug)]
 pub enum MountOption<'a> {
     /// Simple mount flag
     Flag(&'a str),
@@ -45,6 +46,7 @@ impl<'a> MountOption<'a> {
         !self.is_flag()
     }
 }
+
 impl<'a> Mount<'a> {
     /// Convert [`Mount::opts`] into an iterator of typed options
     pub fn options(&self) -> impl Iterator<Item = MountOption> {
@@ -59,11 +61,12 @@ impl<'a> Mount<'a> {
 }
 
 /// MountTable for iterating mount points
-pub struct MountTable {
+#[derive(Debug, Default)]
+pub struct Table {
     data: String,
 }
 
-impl MountTable {
+impl Table {
     /// New MountTable parser for string
     ///
     /// Arguments:
