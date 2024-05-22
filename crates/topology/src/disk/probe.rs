@@ -48,7 +48,7 @@ impl Probe {
     pub fn get_device_from_mountpoint(
         &self,
         mountpoint: impl AsRef<Path>,
-    ) -> Result<String, super::Error> {
+    ) -> Result<PathBuf, super::Error> {
         let mountpoint = fs::canonicalize(mountpoint.as_ref())?;
 
         // Attempt to stat the device
@@ -61,9 +61,7 @@ impl Probe {
 
         // Return by stat path if possible, otherwise fallback to mountpoint device
         if device_path.exists() {
-            Ok(fs::canonicalize(&device_path)?
-                .to_string_lossy()
-                .to_string())
+            Ok(fs::canonicalize(&device_path)?)
         } else {
             // Find matching mountpoint
             let matching_device = self
@@ -72,7 +70,7 @@ impl Probe {
                 .find(|m| PathBuf::from(m.mountpoint) == mountpoint)
                 .ok_or_else(|| super::Error::UnknownMount(mountpoint))?;
             // TODO: Handle `ZFS=`, and composite bcachefs mounts (dev:dev1:dev2)
-            Ok(matching_device.device.to_owned())
+            Ok(matching_device.device.into())
         }
     }
 
