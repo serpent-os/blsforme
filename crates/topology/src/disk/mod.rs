@@ -4,6 +4,8 @@
 
 //! Disk probe/query APIs
 
+use std::path::PathBuf;
+
 use thiserror::Error;
 
 pub mod builder;
@@ -14,4 +16,10 @@ pub mod probe;
 pub enum Error {
     #[error("from io: {0}")]
     IO(#[from] std::io::Error),
+
+    #[error("c stdlib: {0}")]
+    StdLib(#[from] nix::Error),
+
+    #[error("no such mount: {0}")]
+    UnknownMount(PathBuf),
 }

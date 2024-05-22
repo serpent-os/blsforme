@@ -655,6 +655,7 @@ name = "topology"
 version = "0.1.0"
 dependencies = [
  "indextree",
+ "nix",
  "superblock",
  "thiserror",
 ]
