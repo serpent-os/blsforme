@@ -18,9 +18,6 @@ use super::mounts::Table;
 /// A Disk probe to query disks
 #[derive(Debug)]
 pub struct Probe {
-    /// Root of all operations
-    pub(super) root: PathBuf,
-
     /// location of /sys
     pub(super) sysfs: PathBuf,
 

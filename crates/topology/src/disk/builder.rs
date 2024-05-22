@@ -11,7 +11,6 @@ use super::mounts::Table;
 
 /// Builder pattern for a Probe
 pub struct Builder<'a> {
-    root: &'a str,
     sysfs: &'a str,
     devfs: &'a str,
     procfs: &'a str,
@@ -20,7 +19,6 @@ pub struct Builder<'a> {
 /// Generate default builder
 pub fn new<'a>() -> Builder<'a> {
     Builder {
-        root: "/",
         sysfs: "/sys",
         devfs: "/dev",
         procfs: "/proc",
@@ -34,11 +32,6 @@ impl<'a> Default for Builder<'a> {
 }
 
 impl<'a> Builder<'a> {
-    /// Root directory
-    pub fn with_root(self, root: &'a str) -> Self {
-        Self { root, ..self }
-    }
-
     // sysfs directory
     pub fn with_sysfs(self, sysfs: &'a str) -> Self {
         Self { sysfs, ..self }
@@ -58,7 +51,6 @@ impl<'a> Builder<'a> {
     /// Note: All input paths will be verified
     pub fn build(self) -> Result<Probe, super::Error> {
         let mut result = Probe {
-            root: fs::canonicalize(self.root)?,
             sysfs: fs::canonicalize(self.sysfs)?,
             devfs: fs::canonicalize(self.devfs)?,
             procfs: fs::canonicalize(self.procfs)?,
