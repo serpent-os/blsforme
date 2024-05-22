@@ -25,4 +25,7 @@ pub enum Error {
 
     #[error("no such device: {0}")]
     InvalidDevice(PathBuf),
+
+    #[error("superblock: {0}")]
+    Superblock(#[from] superblock::Error),
 }

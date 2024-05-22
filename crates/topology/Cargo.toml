@@ -10,3 +10,4 @@ thiserror.workspace = true
 superblock = { path = "../superblock" }
 indextree = { version = "4.6.1", features = ["par_iter"] }
 nix.workspace = true
+log.workspace = true

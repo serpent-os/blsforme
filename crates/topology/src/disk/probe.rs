@@ -6,10 +6,12 @@
 
 use std::{
     fs,
+    io::{Cursor, Read},
     path::{Path, PathBuf},
 };
 
 use nix::sys::stat;
+use superblock::Superblock;
 
 use super::mounts::Table;
 
@@ -84,18 +86,56 @@ impl Probe {
         )
         .ok()?;
         let parent = child.parent()?.file_name()?;
-        fs::canonicalize(self.devfs.join(parent)).ok()
+        if parent == "block" {
+            None
+        } else {
+            fs::canonicalize(self.devfs.join(parent)).ok()
+        }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn constructor() {
-        let p = crate::disk::builder::new().build().expect("What");
-        eprintln!("p = {:?}", p.mounts.iter().collect::<Vec<_>>());
-        let device = p.get_device_from_mountpoint("/").expect("need /");
-        eprintln!("root = {}", &device);
-        eprintln!("parent = {:?}", p.get_device_parent(&device));
+    /// When given a path in `/dev` we attempt to resolve the full chain for it.
+    /// Note: This does NOT include the initially passed device.
+    pub fn get_device_chain(&self, device: impl AsRef<Path>) -> Result<Vec<PathBuf>, super::Error> {
+        let device = fs::canonicalize(device.as_ref())?;
+        let sysfs_path = fs::canonicalize(
+            device
+                .file_name()
+                .map(|f| self.sysfs.join("class").join("block").join(f))
+                .ok_or_else(|| super::Error::InvalidDevice(device.clone()))?,
+        )?;
+
+        let mut ret = vec![];
+        // no backing devices
+        let dir = sysfs_path.join("slaves");
+        if !dir.exists() {
+            return Ok(ret);
+        }
+
+        // Build a recursive set of device backings
+        for dir in fs::read_dir(dir)? {
+            let entry = dir?;
+            let name = self.devfs.join(entry.file_name());
+            ret.push(name.clone());
+            ret.extend(self.get_device_chain(&name)?);
+        }
+
+        Ok(ret)
+    }
+
+    /// Scan superblock of the device for `UUID=` parameter
+    pub fn get_device_superblock(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<Box<dyn Superblock>, super::Error> {
+        let path = path.as_ref();
+        log::trace!("Querying superblock information for {}", path.display());
+        let fi = fs::File::open(path)?;
+        let mut buffer: Vec<u8> = Vec::with_capacity(2 * 1024 * 1024);
+        fi.take(2 * 1024 * 1024).read_to_end(&mut buffer)?;
+        let mut cursor = Cursor::new(&buffer);
+        let sb = superblock::for_reader(&mut cursor)?;
+        log::trace!("detected superblock: {}", sb.kind());
+
+        Ok(sb)
     }
 }
