@@ -73,6 +73,19 @@ impl Probe {
             Ok(matching_device.device.to_owned())
         }
     }
+
+    /// Retrieve the parent device, such as the disk of a partition, if possible
+    pub fn get_device_parent(&self, device: impl AsRef<Path>) -> Option<PathBuf> {
+        let device = fs::canonicalize(device.as_ref()).ok()?;
+        let child = fs::canonicalize(
+            device
+                .file_name()
+                .map(|f| self.sysfs.join("class").join("block").join(f))?,
+        )
+        .ok()?;
+        let parent = child.parent()?.file_name()?;
+        fs::canonicalize(self.devfs.join(parent)).ok()
+    }
 }
 
 #[cfg(test)]
@@ -81,6 +94,8 @@ mod tests {
     fn constructor() {
         let p = crate::disk::builder::new().build().expect("What");
         eprintln!("p = {:?}", p.mounts.iter().collect::<Vec<_>>());
-        eprintln!("root = {}", p.get_device_from_mountpoint("/").unwrap());
+        let device = p.get_device_from_mountpoint("/").expect("need /");
+        eprintln!("root = {}", &device);
+        eprintln!("parent = {:?}", p.get_device_parent(&device));
     }
 }

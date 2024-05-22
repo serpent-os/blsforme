@@ -22,4 +22,7 @@ pub enum Error {
 
     #[error("no such mount: {0}")]
     UnknownMount(PathBuf),
+
+    #[error("no such device: {0}")]
+    InvalidDevice(PathBuf),
 }
