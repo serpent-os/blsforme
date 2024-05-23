@@ -107,6 +107,7 @@ dependencies = [
  "nix",
  "pretty_env_logger",
  "thiserror",
+ "topology",
 ]
 
 [[package]]

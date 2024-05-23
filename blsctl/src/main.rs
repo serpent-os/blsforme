@@ -147,6 +147,10 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
         log::info!("Kernels: {kernels:?}");
     }
 
+    let probe = topology::disk::builder::Builder::default().build()?;
+    let root = probe.get_rootfs_device(config.root.path())?;
+    log::info!("root = {:?}", root.cmd_line());
+
     Ok(())
 }
 

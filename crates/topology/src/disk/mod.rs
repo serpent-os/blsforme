@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 pub mod builder;
+pub mod device;
 pub mod mounts;
 pub mod probe;
 

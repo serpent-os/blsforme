@@ -13,7 +13,7 @@ use std::{
 use nix::sys::stat;
 use superblock::Superblock;
 
-use super::mounts::Table;
+use super::{device::BlockDevice, mounts::Table};
 
 /// A Disk probe to query disks
 #[derive(Debug)]
@@ -132,5 +132,23 @@ impl Probe {
         log::trace!("detected superblock: {}", sb.kind());
 
         Ok(sb)
+    }
+
+    pub fn get_rootfs_device(&self, path: impl AsRef<Path>) -> Result<BlockDevice, super::Error> {
+        let path = path.as_ref();
+        let device = self.get_device_from_mountpoint(path)?;
+        let chain = self.get_device_chain(&device)?;
+        let mut custodials = vec![device];
+        custodials.extend(chain);
+
+        let tip = custodials.pop().expect("we just added this..");
+        let name = tip.to_string_lossy().to_string();
+
+        let mut block = BlockDevice::new(self, &name, Some(path.into()), false)?;
+        block.children = custodials
+            .iter()
+            .flat_map(|c| BlockDevice::new(self, c, None, true))
+            .collect::<Vec<_>>();
+        Ok(block)
     }
 }
