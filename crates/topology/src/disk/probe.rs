@@ -137,6 +137,16 @@ impl Probe {
     pub fn get_rootfs_device(&self, path: impl AsRef<Path>) -> Result<BlockDevice, super::Error> {
         let path = path.as_ref();
         let device = self.get_device_from_mountpoint(path)?;
+
+        // Scan GPT for PartUUID
+        let guid = if let Some(parent) = self.get_device_parent(&device) {
+            log::warn!("guid {}", parent.display());
+            self.get_device_guid(parent, &device)
+        } else {
+            log::warn!("no parent");
+            None
+        };
+
         let chain = self.get_device_chain(&device)?;
         let mut custodials = vec![device];
         custodials.extend(chain);
@@ -149,6 +159,41 @@ impl Probe {
             .iter()
             .flat_map(|c| BlockDevice::new(self, c, None, true))
             .collect::<Vec<_>>();
+        block.guid = guid;
+
         Ok(block)
+    }
+
+    /// For GPT disks return the PartUUID (GUID)
+    pub fn get_device_guid(
+        &self,
+        parent: impl AsRef<Path>,
+        path: impl AsRef<Path>,
+    ) -> Option<String> {
+        let device = fs::canonicalize(path.as_ref()).ok()?;
+        let sysfs_path = fs::canonicalize(
+            device
+                .file_name()
+                .map(|f| self.sysfs.join("class").join("block").join(f))
+                .ok_or_else(|| super::Error::InvalidDevice(device.clone()))
+                .ok()?,
+        )
+        .ok()?;
+        let partition = str::parse::<u32>(
+            fs::read_to_string(sysfs_path.join("partition"))
+                .ok()?
+                .trim(),
+        )
+        .ok()?;
+        let fi = fs::File::open(parent).ok()?;
+        let gpt_header = gpt::GptConfig::new()
+            .writable(false)
+            .initialized(true)
+            .open_from_device(Box::new(fi))
+            .ok()?;
+        gpt_header
+            .partitions()
+            .get(&partition)
+            .map(|partition| partition.part_guid.hyphenated().to_string())
     }
 }

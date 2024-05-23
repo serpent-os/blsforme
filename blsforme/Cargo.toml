@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gpt = "3.1.0"
 log.workspace = true
 nix.workspace = true
 thiserror.workspace = true
