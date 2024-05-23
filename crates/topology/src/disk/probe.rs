@@ -148,16 +148,22 @@ impl Probe {
         };
 
         let chain = self.get_device_chain(&device)?;
-        let mut custodials = vec![device];
+        let mut custodials = vec![device.clone()];
         custodials.extend(chain);
 
         let tip = custodials.pop().expect("we just added this..");
         let name = tip.to_string_lossy().to_string();
 
-        let mut block = BlockDevice::new(self, &name, Some(path.into()), false)?;
+        let mut block = BlockDevice::new(self, &name, None, true)?;
         block.children = custodials
             .iter()
-            .flat_map(|c| BlockDevice::new(self, c, None, true))
+            .flat_map(|c| {
+                if *c == device {
+                    BlockDevice::new(self, c.clone(), Some(path.into()), false)
+                } else {
+                    BlockDevice::new(self, c.clone(), None, true)
+                }
+            })
             .collect::<Vec<_>>();
         block.guid = guid;
 
