@@ -128,17 +128,6 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
 
 fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     check_permissions()?;
-    /*let probe = Topology::probe(config)
-        .wrap_err(format!(
-            "Unable to probe topology and block device for `{}`",
-            config.root.path().display()
-        ))
-        .with_note(|| "Please make sure that the path definitely exists and is readable")?;
-    log::trace!("Topology result: {probe:?}");
-
-    log::info!("Using rootfs device: {}", probe.rootfs.path.display());
-    log::info!("Additional /proc/cmdline: {}", probe.rootfs.root_cmdline());*/
-
     let schema = query_schema(config)?;
     log::info!("Root Schema: {schema:?}");
 
