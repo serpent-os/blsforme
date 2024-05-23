@@ -19,9 +19,20 @@ Primarily this tooling has been designed to assist the [moss](https://github.com
 ## Testing
 
 ```bash
+# Update your clone with git pull
+# Build fresh release
 cargo build
+# Show commit of the build
+git log -1
+# Run blsforme test
 sudo RUST_LOG=trace ./target/debug/blsctl status
+# Compare to existing boot arguments
+cat /proc/cmdline
+# Compare blsforme discovery to blkid discovery
+sudo lsblk -f
 ```
+
+Paste a suitable excerpt of the above to e.g. https://bpa.st and link to it in the 'General - Serpent OS' channel on matrix
 
 ## Difference to alternatives
 
