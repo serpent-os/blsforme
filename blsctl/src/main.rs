@@ -111,7 +111,7 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
 
     match os_rel.id.as_str() {
         "solus" => {
-            if os_rel.version.name.is_some_and(|v| v.starts_with('4')) {
+            if os_rel.version.name.is_some_and(|v| v.starts_with("4.")) {
                 log::trace!("Legacy schema due to Solus 4 installation");
                 Ok(RootSchema::Legacy("com.solus-project"))
             } else {
