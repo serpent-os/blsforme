@@ -127,7 +127,11 @@ fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
 }
 
 fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
-    check_permissions()?;
+    if let Err(e) = check_permissions() {
+        log::error!("{:#}", e);
+        return Ok(());
+    }
+
     let schema = query_schema(config)?;
     log::info!("Root Schema: {schema:?}");
 
