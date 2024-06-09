@@ -47,7 +47,6 @@ impl BootEnvironment {
         };
 
         // Layered discovery for ESP
-        // TODO: Scan GPT parent node and find ESP
         let esp = if let Ok(device) = Self::determine_esp_by_bls(&firmware, config) {
             Some(device)
         } else if let Ok(device) = Self::determine_esp_by_gpt(disk_parent, config) {
