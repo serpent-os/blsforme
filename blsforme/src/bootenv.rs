@@ -10,6 +10,7 @@ use std::{
 };
 
 use gpt::{partition_types, GptConfig};
+use topology::disk::probe::Probe;
 
 use crate::{
     bootloader::systemd_boot::interface::{BootLoaderInterface, VariableName},
@@ -32,6 +33,9 @@ pub enum Firmware {
 /// Helps access the boot environment, ie `$BOOT` and specific ESP
 #[derive(Debug)]
 pub struct BootEnvironment {
+    /// xbootldr device
+    xbootldr: Option<PathBuf>,
+
     /// The EFI System Partition (stored as a device path)
     esp: Option<PathBuf>,
     firmware: Firmware,
@@ -39,7 +43,7 @@ pub struct BootEnvironment {
 
 impl BootEnvironment {
     /// Return a new BootEnvironment for the given root
-    pub fn new(disk_parent: Option<PathBuf>, config: &Configuration) -> Self {
+    pub fn new(probe: &Probe, disk_parent: Option<PathBuf>, config: &Configuration) -> Result<Self, Error> {
         let firmware = if config.vfs.join("sys").join("firmware").join("efi").exists() {
             Firmware::UEFI
         } else {
@@ -55,11 +59,36 @@ impl BootEnvironment {
             None
         };
 
-        if let Some(esp) = esp.as_ref() {
-            log::info!("EFI System Partition: {}", esp.display());
+        // Make sure our config is sane!
+        if let Firmware::UEFI = firmware {
+            if esp.is_none() {
+                log::error!("No usable ESP detected for a UEFI system");
+                return Err(Error::NoESP);
+            }
         }
 
-        Self { esp, firmware }
+        // Report ESP and check for XBOOTLDR
+        if let Some(esp_path) = esp.as_ref() {
+            log::info!("EFI System Partition: {}", esp_path.display());
+            let xbootldr = if let Ok(xbootldr) = Self::discover_xbootldr(probe, esp_path, config) {
+                log::info!("EFI XBOOTLDR Partition: {}", xbootldr.display());
+                Some(xbootldr)
+            } else {
+                None
+            };
+
+            Ok(Self {
+                xbootldr,
+                esp,
+                firmware,
+            })
+        } else {
+            Ok(Self {
+                xbootldr: None,
+                esp,
+                firmware,
+            })
+        }
     }
 
     /// If UEFI we can ask BootLoaderProtocol for help to find out the ESP device.
@@ -89,6 +118,29 @@ impl BootEnvironment {
             .iter()
             .find(|(_, p)| p.part_type_guid == partition_types::EFI)
             .ok_or(Error::NoESP)?;
+        let path = config
+            .vfs
+            .join("dev")
+            .join("disk")
+            .join("by-partuuid")
+            .join(esp.part_guid.as_hyphenated().to_string());
+        Ok(fs::canonicalize(path)?)
+    }
+
+    /// Discover an XBOOTLDR partition *relative* to wherever the ESP is
+    fn discover_xbootldr(probe: &Probe, esp: &PathBuf, config: &Configuration) -> Result<PathBuf, Error> {
+        let parent = probe.get_device_parent(esp).ok_or(Error::Unsupported)?;
+        log::trace!("Finding XBOOTLDR on device: {:?}", parent);
+        let device = Box::new(File::open(&parent)?);
+        let table = GptConfig::new()
+            .initialized(true)
+            .writable(false)
+            .open_from_device(device)?;
+        let (_, esp) = table
+            .partitions()
+            .iter()
+            .find(|(_, p)| p.part_type_guid == partition_types::FREEDESK_BOOT)
+            .ok_or(Error::NoXBOOTLDR)?;
         let path = config
             .vfs
             .join("dev")

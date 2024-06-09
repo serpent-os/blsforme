@@ -17,6 +17,9 @@ pub enum Error {
     #[error("boot loader protocol: {0}")]
     BootLoaderProtocol(#[from] systemd_boot::interface::Error),
 
+    #[error("undetected xbootldr")]
+    NoXBOOTLDR,
+
     #[error("undetected ESP")]
     NoESP,
 
