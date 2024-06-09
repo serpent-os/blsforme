@@ -9,6 +9,7 @@ use thiserror::Error;
 
 pub mod bootenv;
 pub mod bootloader;
+pub mod kernel;
 pub mod os_release;
 
 /// Core error type for blsforme
