@@ -149,4 +149,18 @@ impl BootEnvironment {
             .join(esp.part_guid.as_hyphenated().to_string());
         Ok(fs::canonicalize(path)?)
     }
+
+    /// The so-called `$BOOT` partition (UEFI only at present)
+    pub fn boot_partition(&self) -> Option<&PathBuf> {
+        if let Some(part) = self.xbootldr.as_ref() {
+            Some(part)
+        } else {
+            self.esp.as_ref()
+        }
+    }
+
+    /// Return the EFI System Partition (UEFI only)
+    pub fn esp(&self) -> Option<&PathBuf> {
+        self.esp.as_ref()
+    }
 }
