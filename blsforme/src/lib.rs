@@ -4,8 +4,22 @@
 
 use std::path::PathBuf;
 
+use bootloader::systemd_boot;
+use thiserror::Error;
+
+pub mod bootenv;
 pub mod bootloader;
 pub mod os_release;
+
+/// Core error type for blsforme
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("boot loader protocol: {0}")]
+    BootLoaderProtocol(#[from] systemd_boot::interface::Error),
+
+    #[error("unsupported usage")]
+    Unsupported,
+}
 
 /// Core configuration for boot management
 #[derive(Debug)]

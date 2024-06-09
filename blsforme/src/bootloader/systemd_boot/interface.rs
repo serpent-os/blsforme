@@ -59,7 +59,7 @@ pub(crate) enum VariableName {
     //EntrySelected,
     //Features,
     //ImageIdentifier,
-    //Info,
+    Info,
     //SystemToken,
 }
 
@@ -77,7 +77,7 @@ impl VariableName {
             //VariableName::EntrySelected => "LoaderEntrySelected",
             //VariableName::Features => "LoaderFeatures",
             //VariableName::ImageIdentifier => "LoaderImageIdentifier",
-            //VariableName::Info => "LoaderInfo",
+            VariableName::Info => "LoaderInfo",
             //VariableName::SystemToken => "LoaderSystemToken",
         }
     }

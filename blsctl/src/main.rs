@@ -12,7 +12,7 @@ use std::{
 };
 
 use blsctl::legacy;
-use blsforme::{os_release::OsRelease, Configuration, Root};
+use blsforme::{bootenv::BootEnvironment, os_release::OsRelease, Configuration, Root};
 use clap::{Parser, Subcommand};
 use color_eyre::{
     eyre::{eyre, Ok},
@@ -143,6 +143,9 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     let probe = topology::disk::builder::Builder::default().build()?;
     let root = probe.get_rootfs_device(config.root.path())?;
     log::info!("root = {:?}", root.cmd_line());
+
+    let env = BootEnvironment::new(config);
+    log::trace!("boot env: {env:?}");
 
     Ok(())
 }
