@@ -17,7 +17,16 @@ pub enum Error {
     #[error("boot loader protocol: {0}")]
     BootLoaderProtocol(#[from] systemd_boot::interface::Error),
 
-    #[error("unsupported usage")]
+    #[error("undetected ESP")]
+    NoESP,
+
+    #[error("generic i/o error")]
+    IO(#[from] std::io::Error),
+
+    #[error("topology scan: {0}")]
+    Topology(#[from] topology::disk::Error),
+
+    #[error("unspported usage")]
     Unsupported,
 }
 

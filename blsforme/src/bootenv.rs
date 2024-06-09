@@ -4,7 +4,12 @@
 
 //! Boot environment tracking (ESP vs XBOOTLDR, etc)
 
-use std::path::PathBuf;
+use std::{
+    fs::{self, File},
+    path::PathBuf,
+};
+
+use gpt::{partition_types, GptConfig};
 
 use crate::{
     bootloader::systemd_boot::interface::{BootLoaderInterface, VariableName},
@@ -34,7 +39,7 @@ pub struct BootEnvironment {
 
 impl BootEnvironment {
     /// Return a new BootEnvironment for the given root
-    pub fn new(config: &Configuration) -> Self {
+    pub fn new(disk_parent: Option<PathBuf>, config: &Configuration) -> Self {
         let firmware = if config.vfs.join("sys").join("firmware").join("efi").exists() {
             Firmware::UEFI
         } else {
@@ -44,6 +49,8 @@ impl BootEnvironment {
         // Layered discovery for ESP
         // TODO: Scan GPT parent node and find ESP
         let esp = if let Ok(device) = Self::determine_esp_by_bls(&firmware, config) {
+            Some(device)
+        } else if let Ok(device) = Self::determine_esp_by_gpt(disk_parent, config) {
             Some(device)
         } else {
             None
@@ -67,5 +74,31 @@ impl BootEnvironment {
         let info = systemd.get_ucs2_string(VariableName::Info)?;
         log::trace!("Encountered BLS compatible bootloader: {info}");
         Ok(systemd.get_device_path()?)
+    }
+
+    /// Determine ESP by searching relative GPT
+    fn determine_esp_by_gpt(
+        disk_parent: Option<PathBuf>,
+        config: &Configuration,
+    ) -> Result<PathBuf, Error> {
+        let parent = disk_parent.ok_or(Error::Unsupported)?;
+        log::trace!("Finding ESP on device: {:?}", parent);
+        let device = Box::new(File::open(&parent)?);
+        let table = GptConfig::new()
+            .initialized(true)
+            .writable(false)
+            .open_from_device(device)?;
+        let (_, esp) = table
+            .partitions()
+            .iter()
+            .find(|(_, p)| p.part_type_guid == partition_types::EFI)
+            .ok_or(Error::NoESP)?;
+        let path = config
+            .vfs
+            .join("dev")
+            .join("disk")
+            .join("by-partuuid")
+            .join(esp.part_guid.as_hyphenated().to_string());
+        Ok(fs::canonicalize(path)?)
     }
 }

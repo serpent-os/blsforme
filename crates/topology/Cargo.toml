@@ -10,4 +10,4 @@ thiserror.workspace = true
 superblock = { path = "../superblock" }
 nix.workspace = true
 log.workspace = true
-gpt = "3.1.0"
+gpt.workspace = true

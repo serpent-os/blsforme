@@ -144,7 +144,8 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     let root = probe.get_rootfs_device(config.root.path())?;
     log::info!("root = {:?}", root.cmd_line());
 
-    let env = BootEnvironment::new(config);
+    let disk_parent = probe.get_device_parent(root.path);
+    let env = BootEnvironment::new(disk_parent, config);
     log::trace!("boot env: {env:?}");
 
     Ok(())

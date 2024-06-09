@@ -10,3 +10,5 @@ log.workspace = true
 nix.workspace = true
 thiserror.workspace = true
 superblock = { path = "../crates/superblock" }
+topology = { path = "../crates/topology" }
+gpt.workspace = true
