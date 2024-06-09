@@ -77,10 +77,7 @@ impl BootEnvironment {
     }
 
     /// Determine ESP by searching relative GPT
-    fn determine_esp_by_gpt(
-        disk_parent: Option<PathBuf>,
-        config: &Configuration,
-    ) -> Result<PathBuf, Error> {
+    fn determine_esp_by_gpt(disk_parent: Option<PathBuf>, config: &Configuration) -> Result<PathBuf, Error> {
         let parent = disk_parent.ok_or(Error::Unsupported)?;
         log::trace!("Finding ESP on device: {:?}", parent);
         let device = Box::new(File::open(&parent)?);

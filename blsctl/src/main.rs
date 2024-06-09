@@ -156,7 +156,8 @@ fn check_permissions() -> color_eyre::Result<()> {
     let euid = unsafe { nix::libc::geteuid() };
     match euid {
         0 => Ok(()),
-        _ => Err(eyre!("blsctl must be run with root privileges to work correctly")).note("This tool must be able to mount partitions and scan partition tables to operate effectively"),
+        _ => Err(eyre!("blsctl must be run with root privileges to work correctly"))
+            .note("This tool must be able to mount partitions and scan partition tables to operate effectively"),
     }
 }
 
@@ -167,10 +168,7 @@ fn main() -> color_eyre::Result<()> {
         .add_issue_metadata("tool-context", "standalone (blsctl)")
         .add_issue_metadata("version", env!("CARGO_PKG_VERSION"))
         .add_issue_metadata("os-release-name", host_os.name)
-        .add_issue_metadata(
-            "os-release-version",
-            host_os.version.name.unwrap_or("n/a".into()),
-        )
+        .add_issue_metadata("os-release-version", host_os.version.name.unwrap_or("n/a".into()))
         .issue_filter(|_| true)
         .install()?;
 
@@ -195,10 +193,7 @@ fn main() -> color_eyre::Result<()> {
         Root::Native("/".into())
     };
 
-    let config = Configuration {
-        root,
-        vfs: "/".into(),
-    };
+    let config = Configuration { root, vfs: "/".into() };
 
     log::trace!("Using configuration: {config:?}");
     log::info!("Inspecting root device: {}", config.root.path().display());

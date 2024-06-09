@@ -77,12 +77,7 @@ impl<'a> BlockDevice<'a> {
 
     /// Generate a working "root=" style boot line
     pub fn cmd_line(&self) -> String {
-        let children = self
-            .children
-            .iter()
-            .map(|c| c.cmd_line())
-            .collect::<Vec<_>>()
-            .join(" ");
+        let children = self.children.iter().map(|c| c.cmd_line()).collect::<Vec<_>>().join(" ");
         let mounts = self
             .probe
             .mounts
@@ -107,10 +102,7 @@ impl<'a> BlockDevice<'a> {
         let local = if let Some(kind) = &self.kind {
             match kind {
                 superblock::Kind::Btrfs => {
-                    let uuid = self
-                        .uuid
-                        .as_ref()
-                        .expect("cannot have btrfs without uuid..");
+                    let uuid = self.uuid.as_ref().expect("cannot have btrfs without uuid..");
                     if let Some(subvol) = mount_options.get("subvol") {
                         format!("root=UUID={} rootfsflags=subvol={}", uuid, subvol)
                     } else {

@@ -42,19 +42,15 @@ impl Probe {
     }
 
     /// Resolve a device by mountpoint
-    pub fn get_device_from_mountpoint(
-        &self,
-        mountpoint: impl AsRef<Path>,
-    ) -> Result<PathBuf, super::Error> {
+    pub fn get_device_from_mountpoint(&self, mountpoint: impl AsRef<Path>) -> Result<PathBuf, super::Error> {
         let mountpoint = fs::canonicalize(mountpoint.as_ref())?;
 
         // Attempt to stat the device
         let stat = stat::lstat(&mountpoint)?;
-        let device_path = self.devfs.join("block").join(format!(
-            "{}:{}",
-            stat::major(stat.st_dev),
-            stat::minor(stat.st_dev)
-        ));
+        let device_path =
+            self.devfs
+                .join("block")
+                .join(format!("{}:{}", stat::major(stat.st_dev), stat::minor(stat.st_dev)));
 
         // Return by stat path if possible, otherwise fallback to mountpoint device
         if device_path.exists() {
@@ -118,10 +114,7 @@ impl Probe {
     }
 
     /// Scan superblock of the device for `UUID=` parameter
-    pub fn get_device_superblock(
-        &self,
-        path: impl AsRef<Path>,
-    ) -> Result<Box<dyn Superblock>, super::Error> {
+    pub fn get_device_superblock(&self, path: impl AsRef<Path>) -> Result<Box<dyn Superblock>, super::Error> {
         let path = path.as_ref();
         log::trace!("Querying superblock information for {}", path.display());
         let fi = fs::File::open(path)?;
@@ -171,11 +164,7 @@ impl Probe {
     }
 
     /// For GPT disks return the PartUUID (GUID)
-    pub fn get_device_guid(
-        &self,
-        parent: impl AsRef<Path>,
-        path: impl AsRef<Path>,
-    ) -> Option<String> {
+    pub fn get_device_guid(&self, parent: impl AsRef<Path>, path: impl AsRef<Path>) -> Option<String> {
         let device = fs::canonicalize(path.as_ref()).ok()?;
         let sysfs_path = fs::canonicalize(
             device
@@ -185,12 +174,7 @@ impl Probe {
                 .ok()?,
         )
         .ok()?;
-        let partition = str::parse::<u32>(
-            fs::read_to_string(sysfs_path.join("partition"))
-                .ok()?
-                .trim(),
-        )
-        .ok()?;
+        let partition = str::parse::<u32>(fs::read_to_string(sysfs_path.join("partition")).ok()?.trim()).ok()?;
         let fi = fs::File::open(parent).ok()?;
         let gpt_header = gpt::GptConfig::new()
             .writable(false)

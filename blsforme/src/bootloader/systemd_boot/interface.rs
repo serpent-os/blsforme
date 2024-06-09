@@ -93,11 +93,7 @@ impl BootLoaderInterface {
     /// Generate a new BootLoaderInterface for the given root
     pub fn new(root: impl AsRef<Path>) -> Result<Self, Error> {
         let root: PathBuf = fs::canonicalize(root)?;
-        let efi_dir = root
-            .join("sys")
-            .join("firmware")
-            .join("efi")
-            .join("efivars");
+        let efi_dir = root.join("sys").join("firmware").join("efi").join("efivars");
         let disk_dir = root.join("dev").join("disk").join("by-partuuid");
 
         Ok(Self {
@@ -109,9 +105,7 @@ impl BootLoaderInterface {
 
     /// Grab the PartUUID for the ESP-booting device
     pub fn get_device_part_uuid(&self) -> Result<String, Error> {
-        Ok(self
-            .get_ucs2_string(VariableName::DevicePartUUID)?
-            .to_lowercase())
+        Ok(self.get_ucs2_string(VariableName::DevicePartUUID)?.to_lowercase())
     }
 
     /// Determine which device "booted", ie the ESP on which systemd-boot lives

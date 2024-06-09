@@ -15,10 +15,7 @@ pub struct LegacyKernel {
 }
 
 /// Why oh why did we invent this poxy scheme
-pub fn discover_kernels_legacy(
-    namespace: &str,
-    root: impl AsRef<Path>,
-) -> color_eyre::Result<Vec<LegacyKernel>> {
+pub fn discover_kernels_legacy(namespace: &str, root: impl AsRef<Path>) -> color_eyre::Result<Vec<LegacyKernel>> {
     let root = root.as_ref().join("usr").join("lib").join("kernel");
     let mut initial_kernels = vec![];
 

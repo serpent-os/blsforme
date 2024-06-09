@@ -125,9 +125,7 @@ impl Superblock for XFS {
 
     /// Return `fname` (volume name) as utf8 string
     fn label(&self) -> Result<String, super::Error> {
-        Ok(std::str::from_utf8(&self.fname)?
-            .trim_end_matches('\0')
-            .to_owned())
+        Ok(std::str::from_utf8(&self.fname)?.trim_end_matches('\0').to_owned())
     }
 }
 

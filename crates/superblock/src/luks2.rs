@@ -68,17 +68,13 @@ impl Superblock for Luks2 {
     /// NOTE: LUKS2 stores string UUID rather than 128-bit sequence..
     fn uuid(&self) -> Result<String, super::Error> {
         let uuid = unsafe { ptr::read_unaligned(ptr::addr_of!(self.uuid)) };
-        Ok(std::str::from_utf8(&uuid)?
-            .trim_end_matches('\0')
-            .to_owned())
+        Ok(std::str::from_utf8(&uuid)?.trim_end_matches('\0').to_owned())
     }
 
     /// NOTE: Label is often empty, set in config instead...
     fn label(&self) -> Result<String, super::Error> {
         let label = unsafe { ptr::read_unaligned(ptr::addr_of!(self.label)) };
-        Ok(std::str::from_utf8(&label)?
-            .trim_end_matches('\0')
-            .to_owned())
+        Ok(std::str::from_utf8(&label)?.trim_end_matches('\0').to_owned())
     }
 }
 

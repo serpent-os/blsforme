@@ -135,8 +135,7 @@ mod tests {
             // to make sure we pre-read a blob and pass it in for rewind/speed.
             memory.clear();
 
-            let mut fi =
-                fs::File::open(format!("tests/{fsname}.img.zst")).expect("Cannot find test image");
+            let mut fi = fs::File::open(format!("tests/{fsname}.img.zst")).expect("Cannot find test image");
             let mut stream = zstd::stream::Decoder::new(&mut fi).expect("Unable to decode stream");
             stream
                 .read_to_end(&mut memory)
