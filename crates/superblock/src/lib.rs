@@ -15,7 +15,7 @@ pub mod luks2;
 pub mod xfs;
 
 /// Supported list of superblock readers
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Kind {
     Btrfs,
     Ext4,
