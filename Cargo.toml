@@ -18,5 +18,5 @@ log = "0.4.21"
 gpt = "3.1.0"
 thiserror = "1.0.61"
 nix = { version = "0.28.0", features = ["fs"] }
-uuid = { version = "1.8.0", features = ["v8"] }
+uuid = { version = "1.9.1", features = ["v8"] }
 zstd = "0.13.1"
