@@ -3,48 +3,52 @@
 // SPDX-License-Identifier: MPL-2.0
 
 //! Builder API for constructing the Probe
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use crate::disk::probe::Probe;
 
 use super::mounts::Table;
 
 /// Builder pattern for a Probe
-pub struct Builder<'a> {
-    sysfs: &'a str,
-    devfs: &'a str,
-    procfs: &'a str,
+pub struct Builder {
+    sysfs: PathBuf,
+    devfs: PathBuf,
+    procfs: PathBuf,
 }
 
-/// Generate default builder
-pub fn new<'a>() -> Builder<'a> {
-    Builder {
-        sysfs: "/sys",
-        devfs: "/dev",
-        procfs: "/proc",
-    }
-}
-
-impl<'a> Default for Builder<'a> {
+impl Default for Builder {
     fn default() -> Self {
-        self::new()
+        Builder {
+            sysfs: "/sys".into(),
+            devfs: "/dev".into(),
+            procfs: "/proc".into(),
+        }
     }
 }
 
-impl<'a> Builder<'a> {
+impl Builder {
     // sysfs directory
-    pub fn with_sysfs(self, sysfs: &'a str) -> Self {
-        Self { sysfs, ..self }
+    pub fn with_sysfs(self, sysfs: impl Into<PathBuf>) -> Self {
+        Self {
+            sysfs: sysfs.into(),
+            ..self
+        }
     }
 
     /// devfs directory
-    pub fn with_devfs(self, devfs: &'a str) -> Self {
-        Self { devfs, ..self }
+    pub fn with_devfs(self, devfs: impl Into<PathBuf>) -> Self {
+        Self {
+            devfs: devfs.into(),
+            ..self
+        }
     }
 
     // procfs directory
-    pub fn with_procfs(self, procfs: &'a str) -> Self {
-        Self { procfs, ..self }
+    pub fn with_procfs(self, procfs: impl Into<PathBuf>) -> Self {
+        Self {
+            procfs: procfs.into(),
+            ..self
+        }
     }
 
     /// Return a newly built Probe

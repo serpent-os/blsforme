@@ -12,6 +12,9 @@ pub mod bootloader;
 pub mod kernel;
 pub mod os_release;
 
+/// Re-export the topology APIs
+pub use topology::disk;
+
 /// Core error type for blsforme
 #[derive(Debug, Error)]
 pub enum Error {

@@ -8,7 +8,8 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-pub mod builder;
+mod builder;
+pub use builder::Builder;
 pub mod device;
 pub mod mounts;
 pub mod probe;

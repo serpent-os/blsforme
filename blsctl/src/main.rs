@@ -20,6 +20,7 @@ use color_eyre::{
 };
 
 use pretty_env_logger::formatted_builder;
+use topology::disk;
 
 /// Boot Loader Specification compatible kernel/initrd/cmdline management
 #[derive(Parser, Debug)]
@@ -140,7 +141,7 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
         log::info!("Kernels: {kernels:?}");
     }
 
-    let probe = topology::disk::builder::Builder::default().build()?;
+    let probe = disk::Builder::default().build()?;
     let root = probe.get_rootfs_device(config.root.path())?;
     log::info!("root = {:?}", root.cmd_line());
 

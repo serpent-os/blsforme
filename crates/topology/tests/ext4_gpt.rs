@@ -6,11 +6,11 @@
 
 use std::{env, path::PathBuf};
 
-use topology::disk::builder;
+use topology::disk::Builder;
 
 #[test]
 fn topology_test() {
-    let topo = builder::new()
+    let topo = Builder::default()
         .with_devfs(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/ext4_gpt/dev"))
         .with_sysfs(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/ext4_gpt/sys"))
         .with_procfs(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/ext4_gpt/proc"))
