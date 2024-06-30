@@ -12,7 +12,7 @@ use std::{
 };
 
 use blsctl::legacy;
-use blsforme::{bootenv::BootEnvironment, os_release::OsRelease, Configuration, Root};
+use blsforme::{os_release::OsRelease, BootEnvironment, Configuration, Root};
 use clap::{Parser, Subcommand};
 use color_eyre::{
     eyre::{eyre, Ok},

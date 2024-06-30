@@ -7,9 +7,12 @@ use std::path::PathBuf;
 use bootloader::systemd_boot;
 use thiserror::Error;
 
-pub mod bootenv;
+mod kernel;
+pub use kernel::{AuxilliaryFile, AuxilliaryKind, Kernel};
+
+mod bootenv;
+pub use bootenv::{BootEnvironment, Firmware};
 pub mod bootloader;
-pub mod kernel;
 pub mod os_release;
 
 /// Re-export the topology APIs

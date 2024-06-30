@@ -9,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use blsforme::kernel::{AuxilliaryFile, AuxilliaryKind, Kernel};
+use blsforme::{AuxilliaryFile, AuxilliaryKind, Kernel};
 
 /// A discovery type: Will not be public forever.
 #[derive(Debug)]
