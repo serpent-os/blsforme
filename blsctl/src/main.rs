@@ -6,13 +6,12 @@
 //! replacement for Solus.
 
 use std::{
-    fs,
+    fs::{self},
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use blsctl::legacy;
-use blsforme::{os_release::OsRelease, Configuration, Manager, Root};
+use blsforme::{os_release::OsRelease, Configuration, Manager, Root, Schema};
 use clap::{Parser, Subcommand};
 use color_eyre::{
     eyre::{eyre, Ok},
@@ -74,16 +73,6 @@ enum Commands {
     Status,
 }
 
-/// Determine the schema to utilise when scanning for kernels
-#[derive(Debug)]
-enum RootSchema {
-    /// clr-boot-manager era, fixed namespace
-    Legacy(&'static str),
-
-    /// blsforme schema
-    BLS4,
-}
-
 fn scan_os_release(root: impl AsRef<Path>) -> color_eyre::Result<OsRelease> {
     let root = root.as_ref();
     let query_paths = vec![
@@ -106,23 +95,23 @@ fn scan_os_release(root: impl AsRef<Path>) -> color_eyre::Result<OsRelease> {
 }
 
 /// Query the schema we need to use for pre BLS schema installations
-fn query_schema(config: &Configuration) -> color_eyre::Result<RootSchema> {
+fn query_schema(config: &Configuration) -> color_eyre::Result<Schema> {
     let os_rel = scan_os_release(config.root.path())?;
 
     match os_rel.id.as_str() {
         "solus" => {
             if os_rel.version.name.is_some_and(|v| v.starts_with("4.")) {
                 log::trace!("Legacy schema due to Solus 4 installation");
-                Ok(RootSchema::Legacy("com.solus-project"))
+                Ok(Schema::Legacy("com.solus-project"))
             } else {
-                Ok(RootSchema::BLS4)
+                Ok(Schema::Blsforme)
             }
         }
         "clear-linux-os" => {
             log::trace!("Legacy schema due to Clear Linux OS installation");
-            Ok(RootSchema::Legacy("org.clearlinux"))
+            Ok(Schema::Legacy("org.clearlinux"))
         }
-        _ => Ok(RootSchema::BLS4),
+        _ => Ok(Schema::Blsforme),
     }
 }
 
@@ -135,11 +124,13 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     let schema = query_schema(config)?;
     log::info!("Root Schema: {schema:?}");
 
-    let kernels = if let RootSchema::Legacy(namespace) = schema {
-        legacy::discover_kernels_legacy(namespace, config.root.path())?
-    } else {
-        vec![]
-    };
+    let paths = glob::glob(&format!("{}/usr/lib/kernel/*", config.root.path().display()))?
+        .chain(glob::glob(&format!(
+            "{}/usr/lib/kernel/*/*",
+            config.root.path().display()
+        ))?)
+        .filter_map(|f| f.ok());
+    let kernels = schema.discover_system_kernels(paths);
     log::info!("Kernels: {kernels:?}");
 
     // Query the manager
