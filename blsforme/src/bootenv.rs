@@ -14,7 +14,7 @@ use topology::disk::probe::Probe;
 
 use crate::{
     bootloader::systemd_boot::interface::{BootLoaderInterface, VariableName},
-    Configuration, Error,
+    Configuration, Error, Root,
 };
 
 /// Type of firmware detected
@@ -38,6 +38,8 @@ pub struct BootEnvironment {
 
     /// The EFI System Partition (stored as a device path)
     esp: Option<PathBuf>,
+
+    /// Firmware in use
     firmware: Firmware,
 }
 
@@ -50,8 +52,11 @@ impl BootEnvironment {
             Firmware::BIOS
         };
 
-        // Layered discovery for ESP
-        let esp = if let Ok(device) = Self::determine_esp_by_bls(&firmware, config) {
+        // For image mode, only allow raw discovery of the GPT device. Otherwise, query BLS
+        // TODO: Add detection of existing mounts to `/boot` and `/efi` !
+        let esp = if matches!(config.root, Root::Image(_)) {
+            Self::determine_esp_by_gpt(disk_parent, config).ok()
+        } else if let Ok(device) = Self::determine_esp_by_bls(&firmware, config) {
             Some(device)
         } else if let Ok(device) = Self::determine_esp_by_gpt(disk_parent, config) {
             Some(device)
