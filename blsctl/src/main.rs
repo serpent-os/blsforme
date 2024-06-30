@@ -12,7 +12,7 @@ use std::{
 };
 
 use blsctl::legacy;
-use blsforme::{os_release::OsRelease, BootEnvironment, Configuration, Root};
+use blsforme::{os_release::OsRelease, Configuration, Manager, Root};
 use clap::{Parser, Subcommand};
 use color_eyre::{
     eyre::{eyre, Ok},
@@ -20,7 +20,6 @@ use color_eyre::{
 };
 
 use pretty_env_logger::formatted_builder;
-use topology::disk;
 
 /// Boot Loader Specification compatible kernel/initrd/cmdline management
 #[derive(Parser, Debug)]
@@ -136,18 +135,15 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     let schema = query_schema(config)?;
     log::info!("Root Schema: {schema:?}");
 
-    if let RootSchema::Legacy(namespace) = schema {
-        let kernels = legacy::discover_kernels_legacy(namespace, config.root.path())?;
-        log::info!("Kernels: {kernels:?}");
-    }
+    let kernels = if let RootSchema::Legacy(namespace) = schema {
+        legacy::discover_kernels_legacy(namespace, config.root.path())?
+    } else {
+        vec![]
+    };
+    log::info!("Kernels: {kernels:?}");
 
-    let probe = disk::Builder::default().build()?;
-    let root = probe.get_rootfs_device(config.root.path())?;
-    log::info!("root = {:?}", root.cmd_line());
-
-    let disk_parent = probe.get_device_parent(root.path);
-    let env = BootEnvironment::new(&probe, disk_parent, config)?;
-    log::trace!("boot env: {env:?}");
+    // Query the manager
+    let _ = Manager::new(config)?.with_kernels(kernels);
 
     Ok(())
 }

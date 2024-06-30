@@ -15,6 +15,9 @@ pub use bootenv::{BootEnvironment, Firmware};
 pub mod bootloader;
 pub mod os_release;
 
+mod manager;
+pub use manager::Manager;
+
 /// Re-export the topology APIs
 pub use topology::disk;
 
