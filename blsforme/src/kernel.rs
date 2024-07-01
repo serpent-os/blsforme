@@ -5,9 +5,11 @@
 //! Kernel abstraction
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet, HashMap},
     path::{Path, PathBuf},
 };
+
+use crate::Error;
 
 /// Control kernel discovery mechanism
 #[derive(Debug)]
@@ -23,7 +25,7 @@ pub enum Schema {
 /// the vmlinuz file. It also comes with a set of auxilliary files
 /// that are required for a fully working system, but specifically
 /// dependent on that kernel version.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Kernel {
     /// Matches the `uname -r` of the kernel, should be uniquely encoded by release/variant
     pub version: String,
@@ -42,7 +44,7 @@ pub struct Kernel {
 }
 
 /// Denotes the kind of auxillary file
-#[derive(Debug)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum AuxilliaryKind {
     /// A cmdline snippet
     Cmdline,
@@ -59,7 +61,7 @@ pub enum AuxilliaryKind {
 
 /// An additional file required to be shipped with the kernel,
 /// such as initrds, system maps, etc.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct AuxilliaryFile {
     pub path: PathBuf,
     pub kind: AuxilliaryKind,
@@ -68,9 +70,9 @@ pub struct AuxilliaryFile {
 impl Schema {
     /// Given a set of kernel-like paths, yield all potential kernels within them
     /// This should be a set of `/usr/lib/kernel` paths. Use glob or appropriate to discover.
-    pub fn discover_system_kernels(&self, paths: impl Iterator<Item = impl AsRef<Path>>) -> Vec<Kernel> {
+    pub fn discover_system_kernels(&self, paths: impl Iterator<Item = impl AsRef<Path>>) -> Result<Vec<Kernel>, Error> {
         match &self {
-            Schema::Legacy(name) => Self::legacy_kernels(name, paths),
+            Schema::Legacy(name) => Ok(Self::legacy_kernels(name, paths)),
             Schema::Blsforme => Self::blsforme_kernels(paths),
         }
     }
@@ -150,13 +152,87 @@ impl Schema {
                     kind: AuxilliaryKind::InitRD,
                 });
             }
+
+            kernel.initrd.sort();
+            kernel.extras.sort();
         }
         kernels.into_values().collect::<Vec<_>>()
     }
 
     // Handle newstyle discovery
-    // TODO: Implement
-    fn blsforme_kernels(paths: impl Iterator<Item = impl AsRef<Path>>) -> Vec<Kernel> {
-        unimplemented!()
+    fn blsforme_kernels(paths: impl Iterator<Item = impl AsRef<Path>>) -> Result<Vec<Kernel>, Error> {
+        let all_paths = paths.map(|m| m.as_ref().to_path_buf()).collect::<BTreeSet<_>>();
+
+        // all `vmlinuz` files within the set
+        let mut kernel_images = all_paths
+            .iter()
+            .filter(|p| p.ends_with("vmlinuz"))
+            .filter_map(|m| {
+                let version = m.parent()?.file_name()?.to_str()?.to_string();
+                Some((
+                    version.clone(),
+                    Kernel {
+                        version,
+                        image: PathBuf::from(m),
+                        initrd: vec![],
+                        extras: vec![],
+                        variant: None,
+                    },
+                ))
+            })
+            .collect::<HashMap<_, _>>();
+
+        // Walk kernels, find matching assets
+        for (version, kernel) in kernel_images.iter_mut() {
+            let lepath = kernel
+                .image
+                .parent()
+                .expect("Failed to grab kernel image parent dir")
+                .to_str()
+                .expect("Failed to decode unicode path");
+            let versioned_assets = all_paths
+                .iter()
+                .filter(|p| !p.ends_with("vmlinuz") && p.starts_with(lepath) && !p.ends_with(version));
+            for asset in versioned_assets {
+                let filename = asset
+                    .file_name()
+                    .ok_or_else(|| Error::InvalidFilesystem)?
+                    .to_str()
+                    .ok_or_else(|| Error::InvalidFilesystem)?;
+                let aux = match filename {
+                    "System.map" => Some(AuxilliaryFile {
+                        path: asset.clone(),
+                        kind: AuxilliaryKind::SystemMap,
+                    }),
+                    //"boot.json" => {},
+                    "config" => Some(AuxilliaryFile {
+                        path: asset.clone(),
+                        kind: AuxilliaryKind::Config,
+                    }),
+                    _ if filename.ends_with(".initrd") => Some(AuxilliaryFile {
+                        path: asset.clone(),
+                        kind: AuxilliaryKind::InitRD,
+                    }),
+                    _ if filename.ends_with(".cmdline") => Some(AuxilliaryFile {
+                        path: asset.clone(),
+                        kind: AuxilliaryKind::Cmdline,
+                    }),
+                    _ => None,
+                };
+
+                if let Some(aux_file) = aux {
+                    if matches!(aux_file.kind, AuxilliaryKind::InitRD) {
+                        kernel.initrd.push(aux_file);
+                    } else {
+                        kernel.extras.push(aux_file);
+                    }
+                }
+
+                kernel.initrd.sort();
+                kernel.extras.sort();
+            }
+        }
+
+        Ok(kernel_images.into_values().collect::<Vec<_>>())
     }
 }

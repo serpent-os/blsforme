@@ -33,6 +33,9 @@ pub enum Error {
     #[error("undetected ESP")]
     NoESP,
 
+    #[error("failed to interact with filesystem properly")]
+    InvalidFilesystem,
+
     #[error("generic i/o error")]
     IO(#[from] std::io::Error),
 
