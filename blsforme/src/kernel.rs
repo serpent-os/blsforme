@@ -174,8 +174,12 @@ impl Schema {
                 });
             }
 
-            kernel.initrd.sort();
-            kernel.extras.sort();
+            kernel
+                .initrd
+                .sort_by_key(|i| i.path.display().to_string().to_lowercase());
+            kernel
+                .extras
+                .sort_by_key(|e| e.path.display().to_string().to_lowercase());
         }
         kernels.into_values().collect::<Vec<_>>()
     }
@@ -252,8 +256,12 @@ impl Schema {
                     }
                 }
 
-                kernel.initrd.sort();
-                kernel.extras.sort();
+                kernel
+                    .initrd
+                    .sort_by_key(|i| i.path.display().to_string().to_lowercase());
+                kernel
+                    .extras
+                    .sort_by_key(|e| e.path.display().to_string().to_lowercase());
             }
         }
 
