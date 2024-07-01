@@ -9,6 +9,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use serde::Deserialize;
+
 use crate::Error;
 
 /// Control kernel discovery mechanism
@@ -19,6 +21,22 @@ pub enum Schema {
 
     /// Modern schema (actually has a schema.)
     Blsforme,
+}
+
+/// `boot.json` deserialise support
+#[derive(Deserialize)]
+pub struct BootJSON<'a> {
+    /// Kernel's package name
+    #[serde(borrow)]
+    name: &'a str,
+
+    /// Kernel's version string (uname -r)
+    #[serde(borrow)]
+    version: &'a str,
+
+    /// Kernel's variant id
+    #[serde(borrow)]
+    variant: &'a str,
 }
 
 /// A kernel is the primary bootable element that we care about, ie
@@ -57,6 +75,9 @@ pub enum AuxilliaryKind {
 
     /// .config file
     Config,
+
+    /// The `boot.json` file
+    BootJSON,
 }
 
 /// An additional file required to be shipped with the kernel,
@@ -204,7 +225,10 @@ impl Schema {
                         path: asset.clone(),
                         kind: AuxilliaryKind::SystemMap,
                     }),
-                    //"boot.json" => {},
+                    "boot.json" => Some(AuxilliaryFile {
+                        path: asset.clone(),
+                        kind: AuxilliaryKind::BootJSON,
+                    }),
                     "config" => Some(AuxilliaryFile {
                         path: asset.clone(),
                         kind: AuxilliaryKind::Config,
@@ -234,5 +258,21 @@ impl Schema {
         }
 
         Ok(kernel_images.into_values().collect::<Vec<_>>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::BootJSON;
+
+    #[test]
+    fn test_boot_json() {
+        let text = fs::read_to_string("boot.json").expect("Failed to read json file");
+        let boot = serde_json::from_str::<BootJSON>(&text).expect("Failed to decode JSON");
+        assert_eq!(boot.name, "linux-desktop");
+        assert_eq!(boot.variant, "desktop");
+        assert_eq!(boot.version, "6.8.2-25.desktop");
     }
 }
