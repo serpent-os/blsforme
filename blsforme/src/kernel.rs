@@ -187,9 +187,9 @@ impl Schema {
             let lepath = kernel
                 .image
                 .parent()
-                .expect("Failed to grab kernel image parent dir")
+                .ok_or_else(|| Error::InvalidFilesystem)?
                 .to_str()
-                .expect("Failed to decode unicode path");
+                .ok_or_else(|| Error::InvalidFilesystem)?;
             let versioned_assets = all_paths
                 .iter()
                 .filter(|p| !p.ends_with("vmlinuz") && p.starts_with(lepath) && !p.ends_with(version));
