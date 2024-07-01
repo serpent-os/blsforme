@@ -130,7 +130,7 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
             config.root.path().display()
         ))?)
         .filter_map(|f| f.ok());
-    let kernels = schema.discover_system_kernels(paths);
+    let kernels = schema.discover_system_kernels(paths)?;
     log::info!("Kernels: {kernels:?}");
 
     // Query the manager
