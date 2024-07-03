@@ -28,7 +28,7 @@ pub struct Probe {
     pub(super) procfs: PathBuf,
 
     /// Mountpoints
-    pub(super) mounts: Table,
+    pub mounts: Table,
 }
 
 impl Probe {

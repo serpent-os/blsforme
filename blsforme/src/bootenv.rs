@@ -5,6 +5,7 @@
 //! Boot environment tracking (ESP vs XBOOTLDR, etc)
 
 use std::{
+    collections::HashMap,
     fs::{self, File},
     path::PathBuf,
 };
@@ -41,6 +42,9 @@ pub struct BootEnvironment {
 
     /// Firmware in use
     firmware: Firmware,
+
+    esp_mountpoint: Option<PathBuf>,
+    xboot_mountpoint: Option<PathBuf>,
 }
 
 impl BootEnvironment {
@@ -51,6 +55,12 @@ impl BootEnvironment {
         } else {
             Firmware::BIOS
         };
+
+        let mounts = probe
+            .mounts
+            .iter()
+            .filter_map(|m| Some((fs::canonicalize(m.device).ok()?, m)))
+            .collect::<HashMap<_, _>>();
 
         // For image mode, only allow raw discovery of the GPT device. Otherwise, query BLS
         // TODO: Add detection of existing mounts to `/boot` and `/efi` !
@@ -72,6 +82,10 @@ impl BootEnvironment {
             }
         }
 
+        let esp_mountpoint = esp
+            .as_ref()
+            .and_then(|e| fs::canonicalize(mounts.get(e)?.mountpoint).ok());
+
         // Report ESP and check for XBOOTLDR
         if let Some(esp_path) = esp.as_ref() {
             log::info!("EFI System Partition: {}", esp_path.display());
@@ -82,16 +96,24 @@ impl BootEnvironment {
                 None
             };
 
+            let xboot_mountpoint = xbootldr
+                .as_ref()
+                .and_then(|e| fs::canonicalize(mounts.get(e)?.mountpoint).ok());
+
             Ok(Self {
                 xbootldr,
                 esp,
                 firmware,
+                xboot_mountpoint,
+                esp_mountpoint,
             })
         } else {
             Ok(Self {
                 xbootldr: None,
                 esp,
                 firmware,
+                xboot_mountpoint: None,
+                esp_mountpoint,
             })
         }
     }

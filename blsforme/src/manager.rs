@@ -39,7 +39,7 @@ impl<'a> Manager<'a> {
         })
     }
 
-    /// Set the system kernels
+    /// Set the system kernels to use for sync operations
     pub fn with_kernels(self, kernels: Vec<Kernel>) -> Self {
         Self {
             system_kernels: kernels,
