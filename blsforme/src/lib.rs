@@ -8,7 +8,7 @@ use bootloader::systemd_boot;
 use thiserror::Error;
 
 mod kernel;
-pub use kernel::{AuxilliaryFile, AuxilliaryKind, Kernel, Schema};
+pub use kernel::{AuxilliaryFile, AuxilliaryKind, BootJSON, Kernel, Schema};
 
 mod bootenv;
 pub use bootenv::{BootEnvironment, Firmware};

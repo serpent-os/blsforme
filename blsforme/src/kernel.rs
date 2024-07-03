@@ -28,15 +28,23 @@ pub enum Schema {
 pub struct BootJSON<'a> {
     /// Kernel's package name
     #[serde(borrow)]
-    name: &'a str,
+    pub name: &'a str,
 
     /// Kernel's version string (uname -r)
     #[serde(borrow)]
-    version: &'a str,
+    pub version: &'a str,
 
     /// Kernel's variant id
     #[serde(borrow)]
-    variant: &'a str,
+    pub variant: &'a str,
+}
+
+impl<'a> TryFrom<&'a str> for BootJSON<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        serde_json::from_str::<Self>(value)
+    }
 }
 
 /// A kernel is the primary bootable element that we care about, ie
@@ -278,7 +286,7 @@ mod tests {
     #[test]
     fn test_boot_json() {
         let text = fs::read_to_string("boot.json").expect("Failed to read json file");
-        let boot = serde_json::from_str::<BootJSON>(&text).expect("Failed to decode JSON");
+        let boot = BootJSON::try_from(text.as_str()).expect("Failed to decode JSON");
         assert_eq!(boot.name, "linux-desktop");
         assert_eq!(boot.variant, "desktop");
         assert_eq!(boot.version, "6.8.2-25.desktop");
