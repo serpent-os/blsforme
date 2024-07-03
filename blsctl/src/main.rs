@@ -11,7 +11,7 @@ use std::{
     str::FromStr,
 };
 
-use blsforme::{os_release::OsRelease, Configuration, Manager, Root, Schema};
+use blsforme::{os_release::OsRelease, BootJSON, Configuration, Manager, Root, Schema};
 use clap::{Parser, Subcommand};
 use color_eyre::{
     eyre::{eyre, Ok},
@@ -130,7 +130,20 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
             config.root.path().display()
         ))?)
         .filter_map(|f| f.ok());
-    let kernels = schema.discover_system_kernels(paths)?;
+    let mut kernels = schema.discover_system_kernels(paths)?;
+
+    // If a boot JSON is provided, augment the records
+    for kernel in kernels.iter_mut() {
+        if let Some(json) = kernel
+            .extras
+            .iter()
+            .find(|e| matches!(e.kind, blsforme::AuxilliaryKind::BootJSON))
+        {
+            let text = fs::read_to_string(&json.path)?;
+            let decoded = BootJSON::try_from(text.as_str())?;
+            kernel.variant = Some(decoded.variant.to_string());
+        }
+    }
     log::info!("Kernels: {kernels:?}");
 
     // Query the manager
