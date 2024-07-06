@@ -132,6 +132,14 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
         .filter_map(|f| f.ok());
     let mut kernels = schema.discover_system_kernels(paths)?;
 
+    // Future: Include other potential bootloader asset paths
+    let booty_bits = glob::glob(&format!(
+        "{}/usr/lib*/systemd/boot/efi/*.efi",
+        config.root.path().display()
+    ))?
+    .filter_map(|f| f.ok())
+    .collect::<Vec<_>>();
+
     // If a boot JSON is provided, augment the records
     for kernel in kernels.iter_mut() {
         if let Some(json) = kernel
@@ -147,9 +155,13 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     log::info!("Kernels: {kernels:?}");
 
     // Query the manager
-    let manager = Manager::new(config)?.with_kernels(kernels);
+    let manager = Manager::new(config)?
+        .with_kernels(kernels)
+        .with_bootloader_assets(booty_bits);
     let _parts = manager.mount_partitions()?;
     eprintln!("manager = {manager:?}");
+
+    manager.sync()?;
 
     Ok(())
 }
