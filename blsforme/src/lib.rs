@@ -21,6 +21,8 @@ pub use manager::Manager;
 /// Re-export the topology APIs
 pub use topology::disk;
 
+pub mod path_ext;
+
 /// Core error type for blsforme
 #[derive(Debug, Error)]
 pub enum Error {

@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use crate::{manager::Mounts, Configuration};
+use crate::{manager::Mounts, path_ext::PathExt, Configuration};
 
 pub mod interface;
 
@@ -43,8 +43,12 @@ impl<'a, 'b> Loader<'a, 'b> {
             .ok_or(super::Error::MissingMount("ESP (/efi)"))?;
         // Copy systemd-bootx64.efi into these locations
         let targets = vec![
-            esp.join("EFI").join("Boot").join("BOOTX64.efi"),
-            esp.join("EFI").join("systemd").join("systemd-bootx64.efi"),
+            esp.join_insensitive("EFI")
+                .join_insensitive("Boot")
+                .join_insensitive("BOOTX64.EFI"),
+            esp.join_insensitive("EFI")
+                .join_insensitive("systemd")
+                .join_insensitive("systemd-bootx64.efi"),
         ];
 
         log::info!("TODO: Copy from {x64_efi:?} to {targets:?}");
