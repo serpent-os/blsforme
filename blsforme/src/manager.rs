@@ -12,12 +12,12 @@ use std::{
 use nix::mount::{mount, umount, MsFlags};
 use topology::disk;
 
-use crate::{BootEnvironment, Configuration, Error, Kernel, Root};
+use crate::{bootloader::Bootloader, BootEnvironment, Configuration, Error, Kernel, Root};
 
 #[derive(Debug)]
-struct Mounts {
-    xbootldr: Option<PathBuf>,
-    esp: Option<PathBuf>,
+pub(crate) struct Mounts {
+    pub(crate) xbootldr: Option<PathBuf>,
+    pub(crate) esp: Option<PathBuf>,
 }
 
 /// Encapsulate the entirety of the boot management core APIs
@@ -27,6 +27,9 @@ pub struct Manager<'a> {
 
     /// OS provided kernels
     system_kernels: Vec<Kernel>,
+
+    /// Potential bootloader assets, allow impl to filter for right paths
+    bootloader_assets: Vec<PathBuf>,
 
     /// Our detected boot environment
     boot_env: BootEnvironment,
@@ -74,6 +77,7 @@ impl<'a> Manager<'a> {
         Ok(Self {
             config,
             system_kernels: vec![],
+            bootloader_assets: vec![],
             boot_env,
             mounts,
         })
@@ -83,6 +87,14 @@ impl<'a> Manager<'a> {
     pub fn with_kernels(self, kernels: Vec<Kernel>) -> Self {
         Self {
             system_kernels: kernels,
+            ..self
+        }
+    }
+
+    /// Update the set of bootloader assets
+    pub fn with_bootloader_assets(self, assets: Vec<PathBuf>) -> Self {
+        Self {
+            bootloader_assets: assets,
             ..self
         }
     }
@@ -128,6 +140,26 @@ impl<'a> Manager<'a> {
             point: target.into(),
             mounted: true,
         })
+    }
+
+    /// Attempt to sync kernels/bootloader with the targets
+    pub fn sync(&self) -> Result<(), Error> {
+        if let Root::Image(_) = self.config.root {
+            if let Some(esp) = self.boot_env.esp() {
+                if self.boot_env.esp_mountpoint.is_none() {
+                    return Err(Error::UnmountedESP(esp.clone()));
+                }
+            }
+        }
+        // Firstly, get the bootloader updated.
+        let bootloader = Bootloader::new(
+            self.config,
+            &self.bootloader_assets,
+            &self.mounts,
+            &self.boot_env.firmware,
+        );
+        bootloader.sync()?;
+        Ok(())
     }
 }
 

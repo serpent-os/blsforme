@@ -27,6 +27,9 @@ pub enum Error {
     #[error("boot loader protocol: {0}")]
     BootLoaderProtocol(#[from] systemd_boot::interface::Error),
 
+    #[error("bootloader error")]
+    Bootloader(#[from] bootloader::Error),
+
     #[error("c stdlib: {0}")]
     C(#[from] nix::errno::Errno),
 
@@ -44,6 +47,9 @@ pub enum Error {
 
     #[error("topology scan: {0}")]
     Topology(#[from] topology::disk::Error),
+
+    #[error("no ESP mounted in image mode, but detected an ESP at {0}")]
+    UnmountedESP(PathBuf),
 
     #[error("unspported usage")]
     Unsupported,
