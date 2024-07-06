@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use crate::{manager::Mounts, path_ext::PathExt, Configuration};
+use crate::{file_utils::PathExt, manager::Mounts, Configuration};
 
 pub mod interface;
 
