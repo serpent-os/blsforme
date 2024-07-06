@@ -41,10 +41,10 @@ pub struct BootEnvironment {
     esp: Option<PathBuf>,
 
     /// Firmware in use
-    firmware: Firmware,
+    pub(crate) firmware: Firmware,
 
-    esp_mountpoint: Option<PathBuf>,
-    xboot_mountpoint: Option<PathBuf>,
+    pub(crate) esp_mountpoint: Option<PathBuf>,
+    pub(crate) xboot_mountpoint: Option<PathBuf>,
 }
 
 impl BootEnvironment {
@@ -189,5 +189,10 @@ impl BootEnvironment {
     /// Return the EFI System Partition (UEFI only)
     pub fn esp(&self) -> Option<&PathBuf> {
         self.esp.as_ref()
+    }
+
+    /// Return the XBOOTLDR partition (UEFI only)
+    pub fn xbootldr(&self) -> Option<&PathBuf> {
+        self.xbootldr.as_ref()
     }
 }

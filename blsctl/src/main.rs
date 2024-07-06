@@ -147,7 +147,9 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     log::info!("Kernels: {kernels:?}");
 
     // Query the manager
-    let _ = Manager::new(config)?.with_kernels(kernels);
+    let manager = Manager::new(config)?.with_kernels(kernels);
+    let _parts = manager.mount_partitions()?;
+    eprintln!("manager = {manager:?}");
 
     Ok(())
 }
