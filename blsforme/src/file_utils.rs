@@ -5,8 +5,9 @@
 //! File utilities shared between the blsforme APIs
 
 use std::{
-    fs::{self, File},
-    os::unix::fs::MetadataExt,
+    fs::{self, create_dir_all, File},
+    io,
+    os::{fd::AsRawFd, unix::fs::MetadataExt},
     path::{Path, PathBuf},
 };
 
@@ -81,4 +82,57 @@ pub fn changed_files<'a, 'b: 'a>(files: &'a [(PathBuf, PathBuf)]) -> Vec<(&'a Pa
             Err(_) => Some((source, dest)),
         })
         .collect::<Vec<_>>()
+}
+
+/// Copy source file to dest file, handling vfat oddities.
+///
+/// Long story short we always set a temporary file name up,
+/// then delete the target file, and finally rename into place.
+/// This is to prevent various block corruption issues with vfat.
+pub fn copy_atomic_vfat(
+    source: impl AsRef<Path>,
+    dest: impl AsRef<Path>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let source = source.as_ref();
+    let dest = dest.as_ref();
+
+    log::trace!("copy_atomic_vfat: {}", dest.display());
+
+    // Staging path
+    let dest_temp = dest.with_extension(".TmpWrite");
+    let dest_exists = dest.exists();
+
+    // Ensure leading path structure exists
+    let dir_leading = dest.parent().ok_or_else(|| Error::InvalidFilesystem)?;
+    if !dir_leading.exists() {
+        create_dir_all(dir_leading)?;
+    }
+
+    // open source/dest
+    let mut output = File::options()
+        .truncate(true)
+        .write(true)
+        .create(true)
+        .open(&dest_temp)?;
+    let mut input = File::open(source)?;
+
+    let output_fd = output.as_raw_fd();
+
+    // Copy *contents* only
+    io::copy(&mut input, &mut output)?;
+    nix::unistd::syncfs(output_fd)?;
+
+    // Remove original destination file
+    if dest_exists {
+        fs::remove_file(dest)?;
+        nix::unistd::syncfs(output_fd)?;
+    }
+
+    // Rename into final location
+    fs::rename(dest_temp, dest)?;
+    nix::unistd::syncfs(output_fd)?;
+
+    log::info!("Updated VFAT file: {}", dest.display());
+
+    Ok(())
 }
