@@ -101,13 +101,16 @@ impl Schema {
     /// This should be a set of `/usr/lib/kernel` paths. Use glob or appropriate to discover.
     pub fn discover_system_kernels(&self, paths: impl Iterator<Item = impl AsRef<Path>>) -> Result<Vec<Kernel>, Error> {
         match &self {
-            Schema::Legacy(name) => Ok(Self::legacy_kernels(name, paths)),
+            Schema::Legacy(name) => Self::legacy_kernels(name, paths),
             Schema::Blsforme => Self::blsforme_kernels(paths),
         }
     }
 
     /// Discover any legacy kernels
-    fn legacy_kernels(namespace: &'static str, paths: impl Iterator<Item = impl AsRef<Path>>) -> Vec<Kernel> {
+    fn legacy_kernels(
+        namespace: &'static str,
+        paths: impl Iterator<Item = impl AsRef<Path>>,
+    ) -> Result<Vec<Kernel>, Error> {
         let paths = paths.collect::<Vec<_>>();
         // First up, find kernels. They start with the prefix..
         let candidates = paths.iter().filter_map(|p| {
@@ -150,6 +153,7 @@ impl Schema {
             let sysmap_file = format!("System.map-{}{}", version, variant_str);
             let cmdline_file = format!("cmdline-{}{}", version, variant_str);
             let config_file = format!("config-{}{}", version, variant_str);
+            let indep_initrd = format!("initrd-{}.", namespace);
             let initrd_file = format!(
                 "initrd-{}{}{}",
                 namespace,
@@ -157,29 +161,71 @@ impl Schema {
                 version
             );
 
-            if let Some(p) = paths.iter().find(|p| p.as_ref().ends_with(&sysmap_file)) {
-                kernel.extras.push(AuxilliaryFile {
-                    path: p.as_ref().into(),
-                    kind: AuxilliaryKind::SystemMap,
-                });
-            }
-            if let Some(p) = paths.iter().find(|p| p.as_ref().ends_with(&cmdline_file)) {
-                kernel.extras.push(AuxilliaryFile {
-                    path: p.as_ref().into(),
-                    kind: AuxilliaryKind::Cmdline,
-                });
-            }
-            if let Some(p) = paths.iter().find(|p| p.as_ref().ends_with(&config_file)) {
-                kernel.extras.push(AuxilliaryFile {
-                    path: p.as_ref().into(),
-                    kind: AuxilliaryKind::Config,
-                });
-            }
-            if let Some(p) = paths.iter().find(|p| p.as_ref().ends_with(&initrd_file)) {
-                kernel.initrd.push(AuxilliaryFile {
-                    path: p.as_ref().into(),
-                    kind: AuxilliaryKind::InitRD,
-                });
+            for path in paths.iter() {
+                let filename = path
+                    .as_ref()
+                    .file_name()
+                    .ok_or_else(|| Error::InvalidFilesystem)?
+                    .to_str()
+                    .ok_or_else(|| Error::InvalidFilesystem)?;
+
+                let aux = match filename {
+                    x if x == sysmap_file => Some(AuxilliaryFile {
+                        path: path.as_ref().into(),
+                        kind: AuxilliaryKind::SystemMap,
+                    }),
+                    x if x == cmdline_file => Some(AuxilliaryFile {
+                        path: path.as_ref().into(),
+                        kind: AuxilliaryKind::Cmdline,
+                    }),
+                    x if x == config_file => Some(AuxilliaryFile {
+                        path: path.as_ref().into(),
+                        kind: AuxilliaryKind::Config,
+                    }),
+                    x if x == initrd_file => Some(AuxilliaryFile {
+                        path: path.as_ref().into(),
+                        kind: AuxilliaryKind::InitRD,
+                    }),
+                    x if x.starts_with(&initrd_file) => {
+                        // Version dependent initrd
+                        if x != initrd_file {
+                            if x.split_once(&initrd_file).is_some() {
+                                Some(AuxilliaryFile {
+                                    path: path.as_ref().into(),
+                                    kind: AuxilliaryKind::InitRD,
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    x if x.starts_with(&indep_initrd) => {
+                        // Version independent initrd
+                        if let Some((_, r)) = x.split_once(&indep_initrd) {
+                            if !r.contains('.') {
+                                Some(AuxilliaryFile {
+                                    path: path.as_ref().into(),
+                                    kind: AuxilliaryKind::InitRD,
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                };
+
+                if let Some(aux_file) = aux {
+                    if matches!(aux_file.kind, AuxilliaryKind::InitRD) {
+                        kernel.initrd.push(aux_file);
+                    } else {
+                        kernel.extras.push(aux_file);
+                    }
+                }
             }
 
             kernel
@@ -189,7 +235,7 @@ impl Schema {
                 .extras
                 .sort_by_key(|e| e.path.display().to_string().to_lowercase());
         }
-        kernels.into_values().collect::<Vec<_>>()
+        Ok(kernels.into_values().collect::<Vec<_>>())
     }
 
     // Handle newstyle discovery
