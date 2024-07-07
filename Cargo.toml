@@ -14,6 +14,7 @@ members = [
 ]
 
 [workspace.dependencies]
+blake3 = { version = "1.5.1", features = ["mmap", "rayon"] }
 log = "0.4.21"
 gpt = "3.1.0"
 thiserror = "1"
