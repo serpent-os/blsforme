@@ -161,8 +161,6 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
     let _parts = manager.mount_partitions()?;
     eprintln!("manager = {manager:?}");
 
-    manager.sync()?;
-
     Ok(())
 }
 

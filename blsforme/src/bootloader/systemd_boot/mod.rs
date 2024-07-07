@@ -6,7 +6,6 @@
 
 use std::path::PathBuf;
 
-
 use crate::{
     file_utils::{changed_files, copy_atomic_vfat, PathExt},
     manager::Mounts,
