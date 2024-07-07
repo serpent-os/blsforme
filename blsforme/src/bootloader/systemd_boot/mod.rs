@@ -6,8 +6,9 @@
 
 use std::path::PathBuf;
 
+
 use crate::{
-    file_utils::{changed_files, PathExt},
+    file_utils::{changed_files, copy_atomic_vfat, PathExt},
     manager::Mounts,
     Configuration,
 };
@@ -61,9 +62,10 @@ impl<'a, 'b> Loader<'a, 'b> {
             ),
         ];
 
-        let to_write = changed_files(targets.as_slice());
+        for (source, dest) in changed_files(targets.as_slice()) {
+            copy_atomic_vfat(source, dest)?;
+        }
 
-        log::info!("TODO: Copy from {x64_efi:?} to {to_write:?}");
-        unimplemented!()
+        Ok(())
     }
 }

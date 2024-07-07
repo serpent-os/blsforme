@@ -20,6 +20,9 @@ pub enum Error {
 
     #[error("missing mountpoint: {0}")]
     MissingMount(&'static str),
+
+    #[error("error: {0}")]
+    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 #[derive(Debug)]
