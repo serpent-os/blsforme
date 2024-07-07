@@ -12,7 +12,7 @@ use std::{
 use nix::mount::{mount, umount, MsFlags};
 use topology::disk;
 
-use crate::{bootloader::Bootloader, BootEnvironment, Configuration, Error, Kernel, Root};
+use crate::{bootloader::Bootloader, BootEnvironment, Configuration, Entry, Error, Root};
 
 #[derive(Debug)]
 pub(crate) struct Mounts {
@@ -26,7 +26,7 @@ pub struct Manager<'a> {
     config: &'a Configuration,
 
     /// OS provided kernels
-    system_kernels: Vec<Kernel>,
+    entries: Vec<Entry<'a>>,
 
     /// Potential bootloader assets, allow impl to filter for right paths
     bootloader_assets: Vec<PathBuf>,
@@ -76,7 +76,7 @@ impl<'a> Manager<'a> {
 
         Ok(Self {
             config,
-            system_kernels: vec![],
+            entries: vec![],
             bootloader_assets: vec![],
             boot_env,
             mounts,
@@ -84,9 +84,9 @@ impl<'a> Manager<'a> {
     }
 
     /// Set the system kernels to use for sync operations
-    pub fn with_kernels(self, kernels: Vec<Kernel>) -> Self {
+    pub fn with_entries(self, entries: impl Iterator<Item = Entry<'a>>) -> Self {
         Self {
-            system_kernels: kernels,
+            entries: entries.collect::<Vec<_>>(),
             ..self
         }
     }

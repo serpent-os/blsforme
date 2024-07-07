@@ -11,7 +11,7 @@ use std::{
     str::FromStr,
 };
 
-use blsforme::{os_release::OsRelease, BootJSON, Configuration, Manager, Root, Schema};
+use blsforme::{os_release::OsRelease, BootJSON, Configuration, Entry, Manager, Root, Schema};
 use clap::{Parser, Subcommand};
 use color_eyre::{
     eyre::{eyre, Ok},
@@ -153,10 +153,11 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
         }
     }
     log::info!("Kernels: {kernels:?}");
+    let entries = kernels.iter().map(Entry::new);
 
     // Query the manager
     let manager = Manager::new(config)?
-        .with_kernels(kernels)
+        .with_entries(entries)
         .with_bootloader_assets(booty_bits);
     let _parts = manager.mount_partitions()?;
     eprintln!("manager = {manager:?}");

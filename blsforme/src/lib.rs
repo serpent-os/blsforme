@@ -23,6 +23,10 @@ pub use topology::disk;
 
 pub mod file_utils;
 
+mod entry;
+
+pub use entry::Entry;
+
 /// Core error type for blsforme
 #[derive(Debug, Error)]
 pub enum Error {
