@@ -66,7 +66,7 @@ fn files_identical(hasher: &mut blake3::Hasher, a: &Path, b: &Path) -> Result<bo
 ///
 /// The first element in the tuple should be the source path, and the
 /// right hand side should contain the destination path.
-pub fn changed_files<'a, 'b: 'a>(files: &'a [(PathBuf, PathBuf)]) -> Vec<(&'a PathBuf, &'a PathBuf)> {
+pub fn changed_files(files: &[(PathBuf, PathBuf)]) -> Vec<(&PathBuf, &PathBuf)> {
     let mut hasher = blake3::Hasher::new();
 
     files
