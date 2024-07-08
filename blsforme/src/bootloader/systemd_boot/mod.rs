@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use crate::{
     file_utils::{changed_files, copy_atomic_vfat, PathExt},
     manager::Mounts,
-    Configuration, Entry,
+    Configuration, Entry, Schema,
 };
 
 pub mod interface;
@@ -68,7 +68,7 @@ impl<'a, 'b> Loader<'a, 'b> {
     }
 
     /// Install a kernel to the ESP or XBOOTLDR, write a config for it
-    pub(super) fn install(&self, entry: &Entry) -> Result<(), super::Error> {
+    pub(super) fn install(&self, schema: &Schema, entry: &Entry) -> Result<(), super::Error> {
         let base = if let Some(xbootldr) = self.mounts.xbootldr.as_ref() {
             xbootldr.clone()
         } else if let Some(esp) = self.mounts.esp.as_ref() {
@@ -79,7 +79,7 @@ impl<'a, 'b> Loader<'a, 'b> {
         let loader_id = base
             .join_insensitive("loader")
             .join_insensitive("entries")
-            .join_insensitive(entry.id())
+            .join_insensitive(entry.id(schema))
             .with_extension(".conf");
         log::trace!("writing entry: {}", loader_id.display());
         unimplemented!()

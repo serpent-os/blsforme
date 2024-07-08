@@ -109,6 +109,14 @@ impl<'a> Schema<'a> {
         }
     }
 
+    /// Grab the os-release reference
+    pub fn os_release(&self) -> &OsRelease {
+        match &self {
+            Schema::Legacy { os_release, .. } => os_release,
+            Schema::Blsforme { os_release } => os_release,
+        }
+    }
+
     /// Discover any legacy kernels
     fn legacy_kernels(
         namespace: &'static str,

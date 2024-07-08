@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use crate::Kernel;
+use crate::{Kernel, Schema};
 
 /// An entry corresponds to a single kernel, and may have a supplemental
 /// cmdline
@@ -29,13 +29,13 @@ impl<'a> Entry<'a> {
     }
 
     /// Return an entry ID, suitable for `.conf` generation
-    pub fn id(&self) -> String {
-        // TODO: For CBM schema, grab `.NAME` from os-release
-        //       For BLS schema, grab something even uniquer (TM)
+    pub fn id(&self, schema: &Schema) -> String {
+        // TODO: For BLS schema, grab something even uniquer (TM)
+        let name = schema.os_release().name.clone();
         if let Some(variant) = self.kernel.variant.as_ref() {
-            format!("unknown-{variant}-{}", &self.kernel.version)
+            format!("{name}-{variant}-{}", &self.kernel.version)
         } else {
-            format!("unknown-{}", &self.kernel.version)
+            format!("{name}-{}", &self.kernel.version)
         }
     }
 }

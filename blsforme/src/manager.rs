@@ -12,7 +12,7 @@ use std::{
 use nix::mount::{mount, umount, MsFlags};
 use topology::disk;
 
-use crate::{bootloader::Bootloader, BootEnvironment, Configuration, Entry, Error, Root};
+use crate::{bootloader::Bootloader, BootEnvironment, Configuration, Entry, Error, Root, Schema};
 
 #[derive(Debug)]
 pub(crate) struct Mounts {
@@ -146,7 +146,7 @@ impl<'a> Manager<'a> {
     ///
     /// Any already installed kernels will be skipped, and this step
     /// is not responsible for *deleting* any unused kernels
-    pub fn sync(&self) -> Result<(), Error> {
+    pub fn sync(&self, schema: &Schema) -> Result<(), Error> {
         if let Root::Image(_) = self.config.root {
             if let Some(esp) = self.boot_env.esp() {
                 if self.boot_env.esp_mountpoint.is_none() {
@@ -165,7 +165,7 @@ impl<'a> Manager<'a> {
 
         // Install every kernel that was passed to us
         for entry in self.entries.iter() {
-            bootloader.install(entry)?;
+            bootloader.install(schema, entry)?;
         }
 
         Ok(())
