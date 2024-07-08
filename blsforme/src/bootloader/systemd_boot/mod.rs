@@ -82,6 +82,21 @@ impl<'a, 'b> Loader<'a, 'b> {
             .join_insensitive(entry.id(schema))
             .with_extension(".conf");
         log::trace!("writing entry: {}", loader_id.display());
+
+        // Old schema used `com.*`, now we use `$id` from os-release
+        let asset_dir = match schema {
+            Schema::Legacy { namespace, .. } => namespace.to_string(),
+            Schema::Blsforme { os_release } => os_release.id.clone(),
+        };
+
+        let asset_dir = base.join_insensitive("EFI").join_insensitive(asset_dir);
+        // vmlinuz primary path
+        let vmlinuz = asset_dir.join_insensitive(
+            entry
+                .installed_kernel_name(schema)
+                .ok_or_else(|| super::Error::MissingFile("vmlinuz"))?,
+        );
+        log::trace!("with kernel path: {}", vmlinuz.display());
         unimplemented!()
     }
 }

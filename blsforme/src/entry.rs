@@ -38,4 +38,10 @@ impl<'a> Entry<'a> {
             format!("{name}-{}", &self.kernel.version)
         }
     }
+
+    /// Generate an installed name for the kernel, used by bootloaders
+    /// Right now this only returns CBM style IDs
+    pub fn installed_kernel_name(&self, _schema: &Schema) -> Option<String> {
+        self.kernel.image.file_name().map(|f| f.to_string_lossy()).map(|filename| format!("kernel-{}", filename))
+    }
 }
