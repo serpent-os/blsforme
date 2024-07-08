@@ -53,9 +53,9 @@ impl<'a, 'b> Bootloader<'a, 'b> {
     }
 
     /// Install a single kernel, create records for it.
-    pub fn install(&self, schema: &Schema, entry: &Entry) -> Result<(), Error> {
+    pub fn install(&self, cmdline: &str, schema: &Schema, entry: &Entry) -> Result<(), Error> {
         match &self {
-            Bootloader::Systemd(s) => s.install(schema, entry),
+            Bootloader::Systemd(s) => s.install(cmdline, schema, entry),
         }
     }
 }

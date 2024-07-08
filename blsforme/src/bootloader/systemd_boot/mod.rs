@@ -68,7 +68,7 @@ impl<'a, 'b> Loader<'a, 'b> {
     }
 
     /// Install a kernel to the ESP or XBOOTLDR, write a config for it
-    pub(super) fn install(&self, schema: &Schema, entry: &Entry) -> Result<(), super::Error> {
+    pub(super) fn install(&self, cmdline: &str, schema: &Schema, entry: &Entry) -> Result<(), super::Error> {
         let base = if let Some(xbootldr) = self.mounts.xbootldr.as_ref() {
             xbootldr.clone()
         } else if let Some(esp) = self.mounts.esp.as_ref() {
@@ -84,12 +84,12 @@ impl<'a, 'b> Loader<'a, 'b> {
         log::trace!("writing entry: {}", loader_id.display());
 
         // Old schema used `com.*`, now we use `$id` from os-release
-        let asset_dir = match schema {
+        let asset_dir_base = match schema {
             Schema::Legacy { namespace, .. } => namespace.to_string(),
             Schema::Blsforme { os_release } => os_release.id.clone(),
         };
 
-        let asset_dir = base.join_insensitive("EFI").join_insensitive(asset_dir);
+        let asset_dir = base.join_insensitive("EFI").join_insensitive(&asset_dir_base);
 
         // vmlinuz primary path
         let vmlinuz = asset_dir.join_insensitive(
@@ -125,6 +125,43 @@ impl<'a, 'b> Loader<'a, 'b> {
             copy_atomic_vfat(source, dest)?;
         }
 
+        let loader_config = self.generate_entry(&asset_dir_base, cmdline, schema, entry);
+        log::trace!("loader config: {loader_config}");
+
         todo!("write a loader.conf file")
+    }
+
+    /// Generate a usable loader config entry
+    fn generate_entry(&self, asset_dir: &str, cmdline: &str, schema: &Schema, entry: &Entry) -> String {
+        let initrd = if entry.kernel.initrd.is_empty() {
+            "\n".to_string()
+        } else {
+            let initrds = entry
+                .kernel
+                .initrd
+                .iter()
+                .filter_map(|asset| {
+                    Some(format!(
+                        "\ninitrd /EFI/{asset_dir}/{}",
+                        entry.installed_asset_name(schema, asset)?
+                    ))
+                })
+                .collect::<String>();
+            format!("\n{}", initrds)
+        };
+        let title = if let Some(pretty) = schema.os_release().meta.pretty_name.as_ref() {
+            format!("{pretty} ({})", entry.kernel.version)
+        } else {
+            format!("{} ({})", schema.os_release().name, entry.kernel.version)
+        };
+        let vmlinuz = entry.installed_kernel_name(schema).expect("linux go boom");
+        let options = "".to_owned() + cmdline;
+        format!(
+            r###"{title}
+linux /EFI/{asset_dir}/{}{}
+options {}
+"###,
+            vmlinuz, initrd, options
+        )
     }
 }

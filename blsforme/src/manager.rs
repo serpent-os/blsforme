@@ -35,6 +35,8 @@ pub struct Manager<'a> {
     boot_env: BootEnvironment,
 
     mounts: Mounts,
+
+    cmdline: String,
 }
 
 impl<'a> Manager<'a> {
@@ -43,7 +45,8 @@ impl<'a> Manager<'a> {
         // Probe the rootfs device managements
         let probe = disk::Builder::default().build()?;
         let root = probe.get_rootfs_device(config.root.path())?;
-        log::info!("root = {:?}", root.cmd_line());
+        let cmdline = root.cmd_line();
+        log::info!("root = {:?}", &cmdline);
 
         // Grab parent disk, establish disk environment setup
         let disk_parent = probe.get_device_parent(root.path);
@@ -80,6 +83,7 @@ impl<'a> Manager<'a> {
             bootloader_assets: vec![],
             boot_env,
             mounts,
+            cmdline,
         })
     }
 
@@ -165,7 +169,7 @@ impl<'a> Manager<'a> {
 
         // Install every kernel that was passed to us
         for entry in self.entries.iter() {
-            bootloader.install(schema, entry)?;
+            bootloader.install(&self.cmdline, schema, entry)?;
         }
 
         Ok(())
