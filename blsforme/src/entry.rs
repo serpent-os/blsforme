@@ -2,13 +2,13 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use crate::{Kernel, Schema};
+use crate::{AuxilliaryFile, Kernel, Schema};
 
 /// An entry corresponds to a single kernel, and may have a supplemental
 /// cmdline
 #[derive(Debug)]
 pub struct Entry<'a> {
-    kernel: &'a Kernel,
+    pub(crate) kernel: &'a Kernel,
 
     // Additional cmdline
     cmdline: Option<String>,
@@ -42,6 +42,23 @@ impl<'a> Entry<'a> {
     /// Generate an installed name for the kernel, used by bootloaders
     /// Right now this only returns CBM style IDs
     pub fn installed_kernel_name(&self, _schema: &Schema) -> Option<String> {
-        self.kernel.image.file_name().map(|f| f.to_string_lossy()).map(|filename| format!("kernel-{}", filename))
+        self.kernel
+            .image
+            .file_name()
+            .map(|f| f.to_string_lossy())
+            .map(|filename| format!("kernel-{}", filename))
+    }
+
+    /// Generate installed asset (aux) name, used by bootloaders
+    /// Right now this only returns CBM style IDs
+    pub fn installed_asset_name(&self, _schema: &Schema, asset: &AuxilliaryFile) -> Option<String> {
+        match asset.kind {
+            crate::AuxilliaryKind::InitRD => asset
+                .path
+                .file_name()
+                .map(|f| f.to_string_lossy())
+                .map(|filename| format!("initrd-{}", filename)),
+            _ => None,
+        }
     }
 }

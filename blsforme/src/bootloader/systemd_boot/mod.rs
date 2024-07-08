@@ -90,13 +90,41 @@ impl<'a, 'b> Loader<'a, 'b> {
         };
 
         let asset_dir = base.join_insensitive("EFI").join_insensitive(asset_dir);
+
         // vmlinuz primary path
         let vmlinuz = asset_dir.join_insensitive(
             entry
                 .installed_kernel_name(schema)
                 .ok_or_else(|| super::Error::MissingFile("vmlinuz"))?,
         );
+        // initrds requiring install
+        let initrds = entry
+            .kernel
+            .initrd
+            .iter()
+            .filter_map(|asset| {
+                Some((
+                    asset.path.clone(),
+                    asset_dir.join_insensitive(entry.installed_asset_name(schema, asset)?),
+                ))
+            })
+            .collect::<Vec<_>>();
         log::trace!("with kernel path: {}", vmlinuz.display());
-        unimplemented!()
+        log::trace!("with initrds: {:?}", initrds);
+
+        // build up the total changeset
+        let mut changeset = vec![(entry.kernel.image.clone(), vmlinuz)];
+        changeset.extend(initrds);
+
+        // Determine which need copying now.
+        let needs_writing = changed_files(changeset.as_slice());
+        log::trace!("requires update: {needs_writing:?}");
+
+        // Donate them to disk
+        for (source, dest) in needs_writing {
+            copy_atomic_vfat(source, dest)?;
+        }
+
+        todo!("write a loader.conf file")
     }
 }
