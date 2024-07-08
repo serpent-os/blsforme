@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-use crate::{manager::Mounts, Configuration, Firmware};
+use crate::{manager::Mounts, Configuration, Entry, Firmware};
 
 pub mod systemd_boot;
 
@@ -49,6 +49,13 @@ impl<'a, 'b> Bootloader<'a, 'b> {
     pub fn sync(&self) -> Result<(), Error> {
         match &self {
             Bootloader::Systemd(s) => s.sync(),
+        }
+    }
+
+    /// Install a single kernel, create records for it.
+    pub fn install(&self, entry: &Entry) -> Result<(), Error> {
+        match &self {
+            Bootloader::Systemd(s) => s.install(entry),
         }
     }
 }

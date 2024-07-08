@@ -143,6 +143,9 @@ impl<'a> Manager<'a> {
     }
 
     /// Attempt to sync kernels/bootloader with the targets
+    ///
+    /// Any already installed kernels will be skipped, and this step
+    /// is not responsible for *deleting* any unused kernels
     pub fn sync(&self) -> Result<(), Error> {
         if let Root::Image(_) = self.config.root {
             if let Some(esp) = self.boot_env.esp() {
@@ -159,6 +162,12 @@ impl<'a> Manager<'a> {
             &self.boot_env.firmware,
         );
         bootloader.sync()?;
+
+        // Install every kernel that was passed to us
+        for entry in self.entries.iter() {
+            bootloader.install(entry)?;
+        }
+
         Ok(())
     }
 }

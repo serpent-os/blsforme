@@ -27,4 +27,15 @@ impl<'a> Entry<'a> {
             ..self
         }
     }
+
+    /// Return an entry ID, suitable for `.conf` generation
+    pub fn id(&self) -> String {
+        // TODO: For CBM schema, grab `.NAME` from os-release
+        //       For BLS schema, grab something even uniquer (TM)
+        if let Some(variant) = self.kernel.variant.as_ref() {
+            format!("unknown-{variant}-{}", &self.kernel.version)
+        } else {
+            format!("unknown-{}", &self.kernel.version)
+        }
+    }
 }
