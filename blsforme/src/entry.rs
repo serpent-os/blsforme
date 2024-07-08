@@ -41,24 +41,37 @@ impl<'a> Entry<'a> {
 
     /// Generate an installed name for the kernel, used by bootloaders
     /// Right now this only returns CBM style IDs
-    pub fn installed_kernel_name(&self, _schema: &Schema) -> Option<String> {
-        self.kernel
-            .image
-            .file_name()
-            .map(|f| f.to_string_lossy())
-            .map(|filename| format!("kernel-{}", filename))
+    pub fn installed_kernel_name(&self, schema: &Schema) -> Option<String> {
+        match &schema {
+            Schema::Legacy { .. } => self
+                .kernel
+                .image
+                .file_name()
+                .map(|f| f.to_string_lossy())
+                .map(|filename| format!("kernel-{}", filename)),
+            Schema::Blsforme { .. } => Some(format!("{}/vmlinuz", self.kernel.version)),
+        }
     }
 
     /// Generate installed asset (aux) name, used by bootloaders
     /// Right now this only returns CBM style IDs
-    pub fn installed_asset_name(&self, _schema: &Schema, asset: &AuxilliaryFile) -> Option<String> {
-        match asset.kind {
-            crate::AuxilliaryKind::InitRD => asset
-                .path
-                .file_name()
-                .map(|f| f.to_string_lossy())
-                .map(|filename| format!("initrd-{}", filename)),
-            _ => None,
+    pub fn installed_asset_name(&self, schema: &Schema, asset: &AuxilliaryFile) -> Option<String> {
+        match &schema {
+            Schema::Legacy { .. } => match asset.kind {
+                crate::AuxilliaryKind::InitRD => asset
+                    .path
+                    .file_name()
+                    .map(|f| f.to_string_lossy())
+                    .map(|filename| format!("initrd-{}", filename)),
+                _ => None,
+            },
+            Schema::Blsforme { .. } => {
+                let filename = asset.path.file_name().map(|f| f.to_string_lossy())?;
+                match asset.kind {
+                    crate::AuxilliaryKind::InitRD => Some(format!("{}/{}", &self.kernel.version, filename)),
+                    _ => None,
+                }
+            }
         }
     }
 }
