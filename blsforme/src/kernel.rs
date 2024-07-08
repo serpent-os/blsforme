@@ -11,16 +11,19 @@ use std::{
 
 use serde::Deserialize;
 
-use crate::Error;
+use crate::{os_release::OsRelease, Error};
 
 /// Control kernel discovery mechanism
 #[derive(Debug)]
-pub enum Schema {
+pub enum Schema<'a> {
     /// Legacy (clr-boot-manager style) schema
-    Legacy(&'static str),
+    Legacy {
+        os_release: &'a OsRelease,
+        namespace: &'static str,
+    },
 
     /// Modern schema (actually has a schema.)
-    Blsforme,
+    Blsforme { os_release: &'a OsRelease },
 }
 
 /// `boot.json` deserialise support
@@ -96,13 +99,13 @@ pub struct AuxilliaryFile {
     pub kind: AuxilliaryKind,
 }
 
-impl Schema {
+impl<'a> Schema<'a> {
     /// Given a set of kernel-like paths, yield all potential kernels within them
     /// This should be a set of `/usr/lib/kernel` paths. Use glob or appropriate to discover.
     pub fn discover_system_kernels(&self, paths: impl Iterator<Item = impl AsRef<Path>>) -> Result<Vec<Kernel>, Error> {
         match &self {
-            Schema::Legacy(name) => Self::legacy_kernels(name, paths),
-            Schema::Blsforme => Self::blsforme_kernels(paths),
+            Schema::Legacy { namespace, .. } => Self::legacy_kernels(namespace, paths),
+            Schema::Blsforme { .. } => Self::blsforme_kernels(paths),
         }
     }
 

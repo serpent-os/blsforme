@@ -95,23 +95,27 @@ fn scan_os_release(root: impl AsRef<Path>) -> color_eyre::Result<OsRelease> {
 }
 
 /// Query the schema we need to use for pre BLS schema installations
-fn query_schema(config: &Configuration) -> color_eyre::Result<Schema> {
-    let os_rel = scan_os_release(config.root.path())?;
-
-    match os_rel.id.as_str() {
+fn query_schema(os_release: &OsRelease) -> color_eyre::Result<Schema> {
+    match os_release.id.as_str() {
         "solus" => {
-            if os_rel.version.name.is_some_and(|v| v.starts_with("4.")) {
+            if os_release.version.name.as_ref().is_some_and(|v| v.starts_with("4.")) {
                 log::trace!("Legacy schema due to Solus 4 installation");
-                Ok(Schema::Legacy("com.solus-project"))
+                Ok(Schema::Legacy {
+                    namespace: "com.solus-project",
+                    os_release,
+                })
             } else {
-                Ok(Schema::Blsforme)
+                Ok(Schema::Blsforme { os_release })
             }
         }
         "clear-linux-os" => {
             log::trace!("Legacy schema due to Clear Linux OS installation");
-            Ok(Schema::Legacy("org.clearlinux"))
+            Ok(Schema::Legacy {
+                namespace: "org.clearlinux",
+                os_release,
+            })
         }
-        _ => Ok(Schema::Blsforme),
+        _ => Ok(Schema::Blsforme { os_release }),
     }
 }
 
@@ -121,7 +125,8 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
         return Ok(());
     }
 
-    let schema = query_schema(config)?;
+    let os_release = scan_os_release(config.root.path())?;
+    let schema = query_schema(&os_release)?;
     log::info!("Root Schema: {schema:?}");
 
     let paths = glob::glob(&format!("{}/usr/lib/kernel/*", config.root.path().display()))?
