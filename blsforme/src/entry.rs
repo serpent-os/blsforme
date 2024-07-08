@@ -31,12 +31,11 @@ impl<'a> Entry<'a> {
     /// Return an entry ID, suitable for `.conf` generation
     pub fn id(&self, schema: &Schema) -> String {
         // TODO: For BLS schema, grab something even uniquer (TM)
-        let name = schema.os_release().name.clone();
-        if let Some(variant) = self.kernel.variant.as_ref() {
-            format!("{name}-{variant}-{}", &self.kernel.version)
-        } else {
-            format!("{name}-{}", &self.kernel.version)
-        }
+        let id = match schema {
+            Schema::Legacy { os_release, .. } => os_release.name.clone(),
+            Schema::Blsforme { os_release } => os_release.id.clone(),
+        };
+        format!("{id}-{}", &self.kernel.version)
     }
 
     /// Generate an installed name for the kernel, used by bootloaders

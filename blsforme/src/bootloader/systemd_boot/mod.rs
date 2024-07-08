@@ -4,7 +4,10 @@
 
 //! systemd-boot management and interfaces
 
-use std::path::PathBuf;
+use std::{
+    fs::{self, create_dir_all},
+    path::PathBuf,
+};
 
 use crate::{
     file_utils::{changed_files, copy_atomic_vfat, PathExt},
@@ -80,7 +83,7 @@ impl<'a, 'b> Loader<'a, 'b> {
             .join_insensitive("loader")
             .join_insensitive("entries")
             .join_insensitive(entry.id(schema))
-            .with_extension(".conf");
+            .with_extension("conf");
         log::trace!("writing entry: {}", loader_id.display());
 
         // Old schema used `com.*`, now we use `$id` from os-release
@@ -128,7 +131,15 @@ impl<'a, 'b> Loader<'a, 'b> {
         let loader_config = self.generate_entry(&asset_dir_base, cmdline, schema, entry);
         log::trace!("loader config: {loader_config}");
 
-        todo!("write a loader.conf file")
+        let entry_dir = base.join_insensitive("loader").join_insensitive("entries");
+        if !entry_dir.exists() {
+            create_dir_all(entry_dir)?;
+        }
+
+        // TODO: Hash compare and dont obliterate!
+        fs::write(loader_id, loader_config)?;
+
+        Ok(())
     }
 
     /// Generate a usable loader config entry
@@ -157,7 +168,7 @@ impl<'a, 'b> Loader<'a, 'b> {
         let vmlinuz = entry.installed_kernel_name(schema).expect("linux go boom");
         let options = "".to_owned() + cmdline;
         format!(
-            r###"{title}
+            r###"title {title}
 linux /EFI/{asset_dir}/{}{}
 options {}
 "###,
