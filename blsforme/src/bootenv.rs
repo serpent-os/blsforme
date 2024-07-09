@@ -63,7 +63,6 @@ impl BootEnvironment {
             .collect::<HashMap<_, _>>();
 
         // For image mode, only allow raw discovery of the GPT device. Otherwise, query BLS
-        // TODO: Add detection of existing mounts to `/boot` and `/efi` !
         let esp = if matches!(config.root, Root::Image(_)) {
             Self::determine_esp_by_gpt(disk_parent, config).ok()
         } else if let Ok(device) = Self::determine_esp_by_bls(&firmware, config) {
