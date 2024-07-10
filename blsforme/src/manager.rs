@@ -57,13 +57,17 @@ impl<'a> Manager<'a> {
         let mut mounts = Mounts {
             xbootldr: if let Some(point) = boot_env.xboot_mountpoint.as_ref() {
                 Some(point.clone())
-            } else {
+            } else if boot_env.xbootldr().is_some() {
                 Some(config.root.path().join("boot"))
+            } else {
+                None
             },
             esp: if let Some(point) = boot_env.esp_mountpoint.as_ref() {
                 Some(point.clone())
-            } else {
+            } else if boot_env.esp().is_some() {
                 Some(config.root.path().join("efi"))
+            } else {
+                None
             },
         };
 
