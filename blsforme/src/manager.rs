@@ -139,7 +139,7 @@ impl<'a> Manager<'a> {
     /// Mount an fat filesystem
     #[inline]
     fn mount_vfat_partition(&self, source: &Path, target: &Path) -> Result<ScopedMount, Error> {
-        let options: Option<&str> = None;
+        let options = Some("umask=0077,noexec,nosuid,nodev");
         if !target.exists() {
             create_dir_all(target)?;
         }
