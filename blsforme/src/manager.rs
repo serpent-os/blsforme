@@ -46,7 +46,7 @@ impl<'a> Manager<'a> {
         let probe = disk::Builder::default().build()?;
         let root = probe.get_rootfs_device(config.root.path())?;
         // Enforce RW rootfs, will review if other downstreams need something different.
-        let cmdline = root.cmd_line() + " rw";
+        let cmdline = root.cmd_line() + " rw quiet";
         log::info!("root = {:?}", &cmdline);
 
         // Grab parent disk, establish disk environment setup
