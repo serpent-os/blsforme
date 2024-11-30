@@ -99,7 +99,7 @@ pub struct AuxilliaryFile {
     pub kind: AuxilliaryKind,
 }
 
-impl<'a> Schema<'a> {
+impl Schema<'_> {
     /// Given a set of kernel-like paths, yield all potential kernels within them
     /// This should be a set of `/usr/lib/kernel` paths. Use glob or appropriate to discover.
     pub fn discover_system_kernels(&self, paths: impl Iterator<Item = impl AsRef<Path>>) -> Result<Vec<Kernel>, Error> {

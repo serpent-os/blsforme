@@ -11,6 +11,7 @@ pub struct Entry<'a> {
     pub(crate) kernel: &'a Kernel,
 
     // Additional cmdline
+    #[allow(dead_code)]
     cmdline: Option<String>,
 }
 

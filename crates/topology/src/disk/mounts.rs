@@ -32,7 +32,7 @@ pub enum MountOption<'a> {
     Option(&'a str, &'a str),
 }
 
-impl<'a> MountOption<'a> {
+impl MountOption<'_> {
     /// Returns true if this is a flag
     pub fn is_flag(&self) -> bool {
         match &self {
@@ -47,7 +47,7 @@ impl<'a> MountOption<'a> {
     }
 }
 
-impl<'a> Mount<'a> {
+impl Mount<'_> {
     /// Convert [`Mount::opts`] into an iterator of typed options
     pub fn options(&self) -> impl Iterator<Item = MountOption> {
         self.opts.split(',').map(|o| {
