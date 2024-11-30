@@ -150,7 +150,7 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
         if let Some(json) = kernel
             .extras
             .iter()
-            .find(|e| matches!(e.kind, blsforme::AuxilliaryKind::BootJSON))
+            .find(|e| matches!(e.kind, blsforme::AuxiliaryKind::BootJSON))
         {
             let text = fs::read_to_string(&json.path)?;
             let decoded = BootJSON::try_from(text.as_str())?;
