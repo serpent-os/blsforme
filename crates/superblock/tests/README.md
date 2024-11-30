@@ -22,7 +22,7 @@ test images)
 ## luks+ext4.img.zst
 
     Password : abc
-    Versio   : LUKS2
+    Version  : LUKS2
     LUKS UUID: be373cae-2bd1-4ad5-953f-3463b2e53e59
     EXT4 UUID: e27c657e-d03c-4f89-b36d-2de6880bc2a1
 

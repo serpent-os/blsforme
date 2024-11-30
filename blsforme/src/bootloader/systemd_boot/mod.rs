@@ -22,6 +22,7 @@ pub mod interface;
 #[derive(Debug)]
 pub struct Loader<'a, 'b> {
     /// system configuration
+    #[allow(dead_code)]
     config: &'a Configuration,
     assets: &'b [PathBuf],
     mounts: &'a Mounts,

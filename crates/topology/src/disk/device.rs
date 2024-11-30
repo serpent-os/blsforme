@@ -18,7 +18,7 @@ use super::probe;
 pub struct BlockDevice<'a> {
     pub kind: Option<superblock::Kind>,
 
-    // Actively mounted somwhere?
+    // Actively mounted somewhere?
     pub mountpoint: Option<PathBuf>,
 
     // Generally easier to work with strings in client code
@@ -36,7 +36,7 @@ pub struct BlockDevice<'a> {
     // GPT partition GUID
     pub(super) guid: Option<String>,
 
-    // Auxillary (ignored) device
+    // Auxiliary (ignored) device
     pub(super) aux: bool,
 }
 

@@ -8,7 +8,7 @@ use bootloader::systemd_boot;
 use thiserror::Error;
 
 mod kernel;
-pub use kernel::{AuxilliaryFile, AuxilliaryKind, BootJSON, Kernel, Schema};
+pub use kernel::{AuxiliaryFile, AuxiliaryKind, BootJSON, Kernel, Schema};
 
 mod bootenv;
 pub use bootenv::{BootEnvironment, Firmware};
@@ -57,7 +57,7 @@ pub enum Error {
     #[error("no ESP mounted in image mode, but detected an ESP at {0}")]
     UnmountedESP(PathBuf),
 
-    #[error("unspported usage")]
+    #[error("unsupported usage")]
     Unsupported,
 }
 
