@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use crate::{AuxilliaryFile, Kernel, Schema};
+use crate::{AuxiliaryFile, Kernel, Schema};
 
 /// An entry corresponds to a single kernel, and may have a supplemental
 /// cmdline
@@ -11,6 +11,7 @@ pub struct Entry<'a> {
     pub(crate) kernel: &'a Kernel,
 
     // Additional cmdline
+    #[allow(dead_code)]
     cmdline: Option<String>,
 }
 
@@ -54,10 +55,10 @@ impl<'a> Entry<'a> {
 
     /// Generate installed asset (aux) name, used by bootloaders
     /// Right now this only returns CBM style IDs
-    pub fn installed_asset_name(&self, schema: &Schema, asset: &AuxilliaryFile) -> Option<String> {
+    pub fn installed_asset_name(&self, schema: &Schema, asset: &AuxiliaryFile) -> Option<String> {
         match &schema {
             Schema::Legacy { .. } => match asset.kind {
-                crate::AuxilliaryKind::InitRD => asset
+                crate::AuxiliaryKind::InitRD => asset
                     .path
                     .file_name()
                     .map(|f| f.to_string_lossy())
@@ -67,7 +68,7 @@ impl<'a> Entry<'a> {
             Schema::Blsforme { .. } => {
                 let filename = asset.path.file_name().map(|f| f.to_string_lossy())?;
                 match asset.kind {
-                    crate::AuxilliaryKind::InitRD => Some(format!("{}/{}", &self.kernel.version, filename)),
+                    crate::AuxiliaryKind::InitRD => Some(format!("{}/{}", &self.kernel.version, filename)),
                     _ => None,
                 }
             }

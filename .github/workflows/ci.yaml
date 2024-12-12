@@ -44,3 +44,11 @@ jobs:
         clippy_flags: --workspace --no-deps
         filter_mode: nofilter
         github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  typos:
+    name: Spell Check with Typos
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.28.1

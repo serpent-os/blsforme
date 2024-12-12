@@ -51,7 +51,7 @@ impl<'a> TryFrom<&'a str> for BootJSON<'a> {
 }
 
 /// A kernel is the primary bootable element that we care about, ie
-/// the vmlinuz file. It also comes with a set of auxilliary files
+/// the vmlinuz file. It also comes with a set of auxiliary files
 /// that are required for a fully working system, but specifically
 /// dependent on that kernel version.
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -63,18 +63,18 @@ pub struct Kernel {
     pub image: PathBuf,
 
     /// All of the initrds
-    pub initrd: Vec<AuxilliaryFile>,
+    pub initrd: Vec<AuxiliaryFile>,
 
-    /// Any non-initrd, auxillary files
-    pub extras: Vec<AuxilliaryFile>,
+    /// Any non-initrd, auxiliary files
+    pub extras: Vec<AuxiliaryFile>,
 
     /// Recorded variant type
     pub variant: Option<String>,
 }
 
-/// Denotes the kind of auxillary file
+/// Denotes the kind of auxiliary file
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub enum AuxilliaryKind {
+pub enum AuxiliaryKind {
     /// A cmdline snippet
     Cmdline,
 
@@ -94,12 +94,12 @@ pub enum AuxilliaryKind {
 /// An additional file required to be shipped with the kernel,
 /// such as initrds, system maps, etc.
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub struct AuxilliaryFile {
+pub struct AuxiliaryFile {
     pub path: PathBuf,
-    pub kind: AuxilliaryKind,
+    pub kind: AuxiliaryKind,
 }
 
-impl<'a> Schema<'a> {
+impl Schema<'_> {
     /// Given a set of kernel-like paths, yield all potential kernels within them
     /// This should be a set of `/usr/lib/kernel` paths. Use glob or appropriate to discover.
     pub fn discover_system_kernels(&self, paths: impl Iterator<Item = impl AsRef<Path>>) -> Result<Vec<Kernel>, Error> {
@@ -181,29 +181,29 @@ impl<'a> Schema<'a> {
                     .ok_or_else(|| Error::InvalidFilesystem)?;
 
                 let aux = match filename {
-                    x if x == sysmap_file => Some(AuxilliaryFile {
+                    x if x == sysmap_file => Some(AuxiliaryFile {
                         path: path.as_ref().into(),
-                        kind: AuxilliaryKind::SystemMap,
+                        kind: AuxiliaryKind::SystemMap,
                     }),
-                    x if x == cmdline_file => Some(AuxilliaryFile {
+                    x if x == cmdline_file => Some(AuxiliaryFile {
                         path: path.as_ref().into(),
-                        kind: AuxilliaryKind::Cmdline,
+                        kind: AuxiliaryKind::Cmdline,
                     }),
-                    x if x == config_file => Some(AuxilliaryFile {
+                    x if x == config_file => Some(AuxiliaryFile {
                         path: path.as_ref().into(),
-                        kind: AuxilliaryKind::Config,
+                        kind: AuxiliaryKind::Config,
                     }),
-                    x if x == initrd_file => Some(AuxilliaryFile {
+                    x if x == initrd_file => Some(AuxiliaryFile {
                         path: path.as_ref().into(),
-                        kind: AuxilliaryKind::InitRD,
+                        kind: AuxiliaryKind::InitRD,
                     }),
                     x if x.starts_with(&initrd_file) => {
                         // Version dependent initrd
                         if x != initrd_file {
                             if x.split_once(&initrd_file).is_some() {
-                                Some(AuxilliaryFile {
+                                Some(AuxiliaryFile {
                                     path: path.as_ref().into(),
-                                    kind: AuxilliaryKind::InitRD,
+                                    kind: AuxiliaryKind::InitRD,
                                 })
                             } else {
                                 None
@@ -216,9 +216,9 @@ impl<'a> Schema<'a> {
                         // Version independent initrd
                         if let Some((_, r)) = x.split_once(&indep_initrd) {
                             if !r.contains('.') {
-                                Some(AuxilliaryFile {
+                                Some(AuxiliaryFile {
                                     path: path.as_ref().into(),
-                                    kind: AuxilliaryKind::InitRD,
+                                    kind: AuxiliaryKind::InitRD,
                                 })
                             } else {
                                 None
@@ -231,7 +231,7 @@ impl<'a> Schema<'a> {
                 };
 
                 if let Some(aux_file) = aux {
-                    if matches!(aux_file.kind, AuxilliaryKind::InitRD) {
+                    if matches!(aux_file.kind, AuxiliaryKind::InitRD) {
                         kernel.initrd.push(aux_file);
                     } else {
                         kernel.extras.push(aux_file);
@@ -290,31 +290,31 @@ impl<'a> Schema<'a> {
                     .to_str()
                     .ok_or_else(|| Error::InvalidFilesystem)?;
                 let aux = match filename {
-                    "System.map" => Some(AuxilliaryFile {
+                    "System.map" => Some(AuxiliaryFile {
                         path: asset.clone(),
-                        kind: AuxilliaryKind::SystemMap,
+                        kind: AuxiliaryKind::SystemMap,
                     }),
-                    "boot.json" => Some(AuxilliaryFile {
+                    "boot.json" => Some(AuxiliaryFile {
                         path: asset.clone(),
-                        kind: AuxilliaryKind::BootJSON,
+                        kind: AuxiliaryKind::BootJSON,
                     }),
-                    "config" => Some(AuxilliaryFile {
+                    "config" => Some(AuxiliaryFile {
                         path: asset.clone(),
-                        kind: AuxilliaryKind::Config,
+                        kind: AuxiliaryKind::Config,
                     }),
-                    _ if filename.ends_with(".initrd") => Some(AuxilliaryFile {
+                    _ if filename.ends_with(".initrd") => Some(AuxiliaryFile {
                         path: asset.clone(),
-                        kind: AuxilliaryKind::InitRD,
+                        kind: AuxiliaryKind::InitRD,
                     }),
-                    _ if filename.ends_with(".cmdline") => Some(AuxilliaryFile {
+                    _ if filename.ends_with(".cmdline") => Some(AuxiliaryFile {
                         path: asset.clone(),
-                        kind: AuxilliaryKind::Cmdline,
+                        kind: AuxiliaryKind::Cmdline,
                     }),
                     _ => None,
                 };
 
                 if let Some(aux_file) = aux {
-                    if matches!(aux_file.kind, AuxilliaryKind::InitRD) {
+                    if matches!(aux_file.kind, AuxiliaryKind::InitRD) {
                         kernel.initrd.push(aux_file);
                     } else {
                         kernel.extras.push(aux_file);
