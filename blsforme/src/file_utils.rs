@@ -136,3 +136,18 @@ pub fn copy_atomic_vfat(
 
     Ok(())
 }
+
+/// Read a cmdline snippet from a file, which supports comments (`#`)
+/// and concatenates lines into a single string.
+pub fn cmdline_snippet(path: impl AsRef<Path>) -> Result<String, Error> {
+    let path = path.as_ref();
+    log::trace!("Reading cmdline snippet: {path:?}");
+    let ret = fs::read_to_string(path)?
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.starts_with('#'))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_string();
+    Ok(ret)
+}

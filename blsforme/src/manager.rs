@@ -5,14 +5,16 @@
 //! Boot loader management entry APIs
 
 use std::{
-    fs::create_dir_all,
+    fs::{self, create_dir_all},
     path::{Path, PathBuf},
 };
 
 use nix::mount::{mount, umount, MsFlags};
 use topology::disk;
 
-use crate::{bootloader::Bootloader, BootEnvironment, Configuration, Entry, Error, Root, Schema};
+use crate::{
+    bootloader::Bootloader, file_utils::cmdline_snippet, BootEnvironment, Configuration, Entry, Error, Root, Schema,
+};
 
 #[derive(Debug)]
 pub(crate) struct Mounts {
@@ -45,9 +47,64 @@ impl<'a> Manager<'a> {
         // Probe the rootfs device managements
         let probe = disk::Builder::default().build()?;
         let root = probe.get_rootfs_device(config.root.path())?;
-        // Enforce RW rootfs, will review if other downstreams need something different.
-        let cmdline = root.cmd_line() + " rw quiet";
-        log::info!("root = {:?}", &cmdline);
+        log::info!("root = {:?}", root.cmd_line());
+
+        // Right now we assume `rw` for the rootfs
+        let mut cmdline = vec![root.cmd_line(), "rw".to_string()];
+        let mut local_cmdline = vec![];
+
+        let etc_cmdline_d = config.root.path().join("etc").join("kernel").join("cmdline.d");
+        let etc_entries = fs::read_dir(&etc_cmdline_d)
+            .map(|i| {
+                i.filter_map(|p| p.ok())
+                    .filter(|d| d.path().extension().map_or(false, |e| e == "cmdline"))
+                    .map(|d| d.path().clone())
+            })
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+        let mut system_excludes = vec![];
+
+        for entry in etc_entries {
+            // For anything that's a symlink to /dev/null, we'll exclude the matching system-wide cmdline
+            if entry.is_symlink() {
+                if let Ok(target) = entry.read_link() {
+                    if target == PathBuf::from("/dev/null") {
+                        log::trace!("excluding system-wide cmdline.d entry {:?}", entry);
+                        system_excludes.push(entry.file_name().unwrap_or_default().to_string_lossy().to_string());
+                        continue;
+                    }
+                }
+            }
+            // Ensure /etc cmdline.d entries are added to the end of the generated cmdline
+            if let Ok(c) = cmdline_snippet(entry) {
+                local_cmdline.push(c);
+            }
+        }
+
+        // Merge the system-wide cmdline with the rootfs cmdline
+        if let Ok(it) = fs::read_dir(
+            config
+                .root
+                .path()
+                .join("usr")
+                .join("lib")
+                .join("kernel")
+                .join("cmdline.d"),
+        ) {
+            log::trace!("reading system cmdline.d entries");
+            let entries = it
+                .filter_map(|p| p.ok())
+                .filter(|d| {
+                    if let Some(name) = d.file_name().to_str() {
+                        !system_excludes.contains(&name.to_string())
+                    } else {
+                        true
+                    }
+                })
+                .filter_map(|p| cmdline_snippet(p.path()).ok());
+            cmdline.extend(entries);
+        }
 
         // Grab parent disk, establish disk environment setup
         let disk_parent = probe.get_device_parent(root.path);
@@ -82,13 +139,20 @@ impl<'a> Manager<'a> {
             }
         }
 
+        let cmdline_string = cmdline
+            .iter()
+            .chain(local_cmdline.iter())
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(" ");
+
         Ok(Self {
             config,
             entries: vec![],
             bootloader_assets: vec![],
             boot_env,
             mounts,
-            cmdline,
+            cmdline: cmdline_string,
         })
     }
 
