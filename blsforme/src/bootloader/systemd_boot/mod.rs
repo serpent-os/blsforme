@@ -167,7 +167,11 @@ impl<'a, 'b> Loader<'a, 'b> {
             format!("{} ({})", schema.os_release().name, entry.kernel.version)
         };
         let vmlinuz = entry.installed_kernel_name(schema).expect("linux go boom");
-        let options = "".to_owned() + cmdline;
+        let options = if let Some(k_cmdline) = entry.kernel.cmdline.as_ref() {
+            format!("{cmdline} {k_cmdline}")
+        } else {
+            cmdline.to_string()
+        };
         format!(
             r###"title {title}
 linux /EFI/{asset_dir}/{}{}

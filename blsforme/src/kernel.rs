@@ -11,7 +11,7 @@ use std::{
 
 use serde::Deserialize;
 
-use crate::{os_release::OsRelease, Error};
+use crate::{file_utils::cmdline_snippet, os_release::OsRelease, Error};
 
 /// Control kernel discovery mechanism
 #[derive(Debug)]
@@ -70,6 +70,8 @@ pub struct Kernel {
 
     /// Recorded variant type
     pub variant: Option<String>,
+
+    pub cmdline: Option<String>,
 }
 
 /// Denotes the kind of auxiliary file
@@ -117,6 +119,24 @@ impl Schema<'_> {
         }
     }
 
+    fn load_cmdline(kernel: &Kernel) -> Result<String, Error> {
+        // Load local cmdline snippets for this kernel entry
+        let mut cmdline = String::new();
+        for snippet in kernel
+            .extras
+            .iter()
+            .filter(|e| matches!(e.kind, crate::AuxiliaryKind::Cmdline))
+        {
+            let snippet = cmdline_snippet(&snippet.path)?;
+            cmdline.push_str(&snippet);
+            cmdline.push(' ');
+        }
+
+        log::trace!("kernel-specific cmdline for {:?}: {cmdline}", kernel.image);
+
+        Ok(cmdline.trim().to_string())
+    }
+
     /// Discover any legacy kernels
     fn legacy_kernels(
         namespace: &'static str,
@@ -151,6 +171,7 @@ impl Schema<'_> {
                                 initrd: vec![],
                                 extras: vec![],
                                 variant: Some(variant.to_string()),
+                                cmdline: None,
                             },
                         );
                     }
@@ -245,6 +266,7 @@ impl Schema<'_> {
             kernel
                 .extras
                 .sort_by_key(|e| e.path.display().to_string().to_lowercase());
+            kernel.cmdline = Self::load_cmdline(kernel).ok().filter(|s| !s.is_empty());
         }
         Ok(kernels.into_values().collect::<Vec<_>>())
     }
@@ -267,6 +289,7 @@ impl Schema<'_> {
                         initrd: vec![],
                         extras: vec![],
                         variant: None,
+                        cmdline: None,
                     },
                 ))
             })
@@ -327,6 +350,7 @@ impl Schema<'_> {
                 kernel
                     .extras
                     .sort_by_key(|e| e.path.display().to_string().to_lowercase());
+                kernel.cmdline = Self::load_cmdline(kernel).ok().filter(|s| !s.is_empty());
             }
         }
 
