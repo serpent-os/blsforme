@@ -4,7 +4,17 @@
 
 use std::path::PathBuf;
 
-use crate::{AuxiliaryFile, Kernel, Schema};
+use crate::{file_utils::cmdline_snippet, AuxiliaryFile, Configuration, Kernel, Schema};
+
+/// A cmdline entry is found in the `$sysroot/usr/lib/kernel/cmdline.d` directory
+#[derive(Debug)]
+pub struct CmdlineEntry {
+    /// Name of the entry, i.e. `00-quiet.cmdline`
+    pub name: String,
+
+    /// Text contents of this cmdline entry
+    pub snippet: String,
+}
 
 /// An entry corresponds to a single kernel, and may have a supplemental
 /// cmdline
@@ -14,9 +24,7 @@ pub struct Entry<'a> {
 
     pub(crate) sysroot: Option<PathBuf>,
 
-    // Additional cmdline
-    #[allow(dead_code)]
-    cmdline: Option<String>,
+    pub(crate) cmdline: Vec<CmdlineEntry>,
 }
 
 impl<'a> Entry<'a> {
@@ -24,20 +32,34 @@ impl<'a> Entry<'a> {
     pub fn new(kernel: &'a Kernel) -> Self {
         Self {
             kernel,
-            cmdline: None,
+            cmdline: vec![],
             sysroot: None,
         }
     }
 
-    /// With the following cmdline
-    pub fn with_cmdline(self, cmdline: impl AsRef<str>) -> Self {
-        Self {
-            cmdline: Some(cmdline.as_ref().to_string()),
-            ..self
+    /// Load cmdline snippets from the system root for this entry's sysroot
+    pub fn load_cmdline_snippets(&mut self, config: &Configuration) -> Result<(), super::Error> {
+        let sysroot = self.sysroot.clone().unwrap_or(config.root.path().into());
+        let cmdline_d = sysroot.join("usr").join("lib").join("kernel").join("cmdline.d");
+
+        if !cmdline_d.exists() {
+            return Ok(());
         }
+
+        let entries = std::fs::read_dir(&cmdline_d)?;
+
+        for entry in entries {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            let snippet = cmdline_snippet(entry.path())?;
+            self.cmdline.push(CmdlineEntry { name, snippet });
+        }
+
+        Ok(())
     }
 
     /// With the given system root
+    /// This will cause any local snippets to be discovered
     pub fn with_sysroot(self, sysroot: impl Into<PathBuf>) -> Self {
         Self {
             sysroot: Some(sysroot.into()),

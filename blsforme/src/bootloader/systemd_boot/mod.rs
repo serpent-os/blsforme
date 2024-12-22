@@ -95,6 +95,36 @@ impl<'a, 'b> Loader<'a, 'b> {
         Ok(())
     }
 
+    pub(super) fn sync_entries(
+        &self,
+        cmdline: impl Iterator<Item = &'a str>,
+        entries: &[Entry],
+        excluded_snippets: impl Iterator<Item = &'a str>,
+    ) -> Result<(), super::Error> {
+        let base_cmdline = cmdline.map(str::to_string).collect::<Vec<_>>();
+        let exclusions = excluded_snippets.map(str::to_string).collect::<Vec<_>>();
+        for entry in entries {
+            let entry_cmdline = entry
+                .cmdline
+                .iter()
+                .filter(|c| !exclusions.contains(&c.name))
+                .map(|c| c.snippet.clone())
+                .collect::<Vec<_>>();
+            let mut full_cmdline = base_cmdline
+                .iter()
+                .chain(entry_cmdline.iter())
+                .cloned()
+                .collect::<Vec<_>>();
+
+            // kernel specific cmdline
+            if let Some(k_cmdline) = entry.kernel.cmdline.as_ref() {
+                full_cmdline.push(k_cmdline.clone());
+            }
+            self.install(&full_cmdline.join(" "), entry)?;
+        }
+        Ok(())
+    }
+
     /// Install a kernel to the ESP or XBOOTLDR, write a config for it
     pub(super) fn install(&self, cmdline: &str, entry: &Entry) -> Result<(), super::Error> {
         let loader_id = self
@@ -185,17 +215,12 @@ impl<'a, 'b> Loader<'a, 'b> {
             format!("{} ({})", self.schema.os_release().name, entry.kernel.version)
         };
         let vmlinuz = entry.installed_kernel_name(self.schema).expect("linux go boom");
-        let options = if let Some(k_cmdline) = entry.kernel.cmdline.as_ref() {
-            format!("{cmdline} {k_cmdline}")
-        } else {
-            cmdline.to_string()
-        };
         format!(
             r###"title {title}
 linux /{asset_dir}/{}{}
-options {}
+options {cmdline}
 "###,
-            vmlinuz, initrd, options
+            vmlinuz, initrd
         )
     }
 

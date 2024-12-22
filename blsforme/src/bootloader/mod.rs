@@ -60,6 +60,17 @@ impl<'a, 'b> Bootloader<'a, 'b> {
         }
     }
 
+    pub fn sync_entries(
+        &self,
+        cmdline: impl Iterator<Item = &'a str>,
+        entries: &[Entry],
+        excluded_snippets: impl Iterator<Item = &'a str>,
+    ) -> Result<(), Error> {
+        match &self {
+            Bootloader::Systemd(s) => s.sync_entries(cmdline, entries, excluded_snippets),
+        }
+    }
+
     /// Install a single kernel, create records for it.
     pub fn install(&self, cmdline: &str, entry: &Entry) -> Result<(), Error> {
         match &self {
