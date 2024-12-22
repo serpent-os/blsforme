@@ -126,7 +126,7 @@ impl<'a, 'b> Loader<'a, 'b> {
     }
 
     /// Install a kernel to the ESP or XBOOTLDR, write a config for it
-    pub(super) fn install(&self, cmdline: &str, entry: &Entry) -> Result<(), super::Error> {
+    fn install(&self, cmdline: &str, entry: &Entry) -> Result<(), super::Error> {
         let loader_id = self
             .boot_root
             .join_insensitive("loader")

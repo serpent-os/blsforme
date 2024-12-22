@@ -71,13 +71,6 @@ impl<'a, 'b> Bootloader<'a, 'b> {
         }
     }
 
-    /// Install a single kernel, create records for it.
-    pub fn install(&self, cmdline: &str, entry: &Entry) -> Result<(), Error> {
-        match &self {
-            Bootloader::Systemd(s) => s.install(cmdline, entry),
-        }
-    }
-
     /// Grab the installed entries
     pub fn installed_kernels(&self) -> Result<Vec<Kernel>, Error> {
         match &self {
