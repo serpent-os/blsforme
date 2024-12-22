@@ -31,6 +31,15 @@ pub struct Loader<'a, 'b> {
     boot_root: PathBuf,
 }
 
+#[derive(Debug)]
+struct InstallResult {
+    /// The `.conf` file that was written (absolute)
+    loader_conf: String,
+
+    // The kernel path that was installed (absolute)
+    kernel_dir: String,
+}
+
 impl<'a, 'b> Loader<'a, 'b> {
     /// Construct a new systemd boot loader manager
     pub(super) fn new(schema: &'a Schema<'a>, assets: &'b [PathBuf], mounts: &'a Mounts) -> Result<Self, super::Error> {
@@ -103,6 +112,7 @@ impl<'a, 'b> Loader<'a, 'b> {
     ) -> Result<(), super::Error> {
         let base_cmdline = cmdline.map(str::to_string).collect::<Vec<_>>();
         let exclusions = excluded_snippets.map(str::to_string).collect::<Vec<_>>();
+        let mut installed_entries = vec![];
         for entry in entries {
             let entry_cmdline = entry
                 .cmdline
@@ -120,13 +130,57 @@ impl<'a, 'b> Loader<'a, 'b> {
             if let Some(k_cmdline) = entry.kernel.cmdline.as_ref() {
                 full_cmdline.push(k_cmdline.clone());
             }
-            self.install(&full_cmdline.join(" "), entry)?;
+            let installed = self.install(&full_cmdline.join(" "), entry)?;
+            installed_entries.push(installed);
         }
+
+        let schema_prefix = match self.schema {
+            Schema::Legacy { os_release, .. } => os_release.name.clone(),
+            Schema::Blsforme { os_release } => os_release.id.clone(),
+        };
+
+        let loader_dir = self.boot_root.join_insensitive("loader").join_insensitive("entries");
+        let loader_files = fs::read_dir(loader_dir)?
+            .filter_map(|d| d.ok())
+            .filter(|f| f.file_name().to_string_lossy().to_string().starts_with(&schema_prefix))
+            .map(|f| f.path())
+            .collect::<Vec<_>>();
+
+        let kernel_dirs = fs::read_dir(&self.kernel_dir)?
+            .filter_map(|d| d.ok())
+            .filter(|f| f.file_type().map(|t| t.is_dir()).unwrap_or(false))
+            .map(|f| f.path())
+            .collect::<Vec<_>>();
+
+        let obsolete_loader_confs = loader_files
+            .iter()
+            .filter(|f| !installed_entries.iter().any(|e| e.loader_conf == f.to_string_lossy()))
+            .collect::<Vec<_>>();
+
+        let obsolete_kernels = kernel_dirs
+            .iter()
+            .filter(|f| !installed_entries.iter().any(|e| e.kernel_dir == f.to_string_lossy()))
+            .collect::<Vec<_>>();
+
+        for conf in obsolete_loader_confs.iter() {
+            log::info!("Removing stale loader config: {conf:?}");
+            if let Err(e) = fs::remove_file(conf) {
+                log::error!("Failed to remove stale loader config {conf:?}: {e}")
+            }
+        }
+
+        for tree in obsolete_kernels.iter() {
+            log::info!("Removing stale kernel tree: {tree:?}");
+            if let Err(e) = fs::remove_dir_all(tree) {
+                log::error!("Failed to remove stale kernel tree {tree:?}: {e}")
+            }
+        }
+
         Ok(())
     }
 
     /// Install a kernel to the ESP or XBOOTLDR, write a config for it
-    fn install(&self, cmdline: &str, entry: &Entry) -> Result<(), super::Error> {
+    fn install(&self, cmdline: &str, entry: &Entry) -> Result<InstallResult, super::Error> {
         let loader_id = self
             .boot_root
             .join_insensitive("loader")
@@ -158,7 +212,7 @@ impl<'a, 'b> Loader<'a, 'b> {
         log::trace!("with initrds: {:?}", initrds);
 
         // build up the total changeset
-        let mut changeset = vec![(entry.kernel.image.clone(), vmlinuz)];
+        let mut changeset = vec![(entry.kernel.image.clone(), vmlinuz.clone())];
         changeset.extend(initrds);
 
         // Determine which need copying now.
@@ -185,10 +239,19 @@ impl<'a, 'b> Loader<'a, 'b> {
             create_dir_all(entry_dir)?;
         }
 
+        let tracker = InstallResult {
+            loader_conf: loader_id.to_string_lossy().to_string(),
+            kernel_dir: vmlinuz
+                .parent()
+                .ok_or_else(|| super::Error::MissingFile("vmlinuz parent"))?
+                .to_string_lossy()
+                .to_string(),
+        };
+
         // TODO: Hash compare and dont obliterate!
         fs::write(loader_id, loader_config)?;
 
-        Ok(())
+        Ok(tracker)
     }
 
     /// Generate a usable loader config entry
