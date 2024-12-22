@@ -4,11 +4,11 @@
 
 //! Bootloader APIs
 
-use std::path::PathBuf;
+use std::path::{PathBuf, StripPrefixError};
 
 use thiserror::Error;
 
-use crate::{manager::Mounts, Configuration, Entry, Firmware, Schema};
+use crate::{manager::Mounts, Entry, Firmware, Kernel, Schema};
 
 pub mod systemd_boot;
 
@@ -24,6 +24,9 @@ pub enum Error {
     #[error("io: {0}")]
     IO(#[from] std::io::Error),
 
+    #[error("wip: {0}")]
+    Prefix(#[from] StripPrefixError),
+
     #[error("error: {0}")]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
@@ -37,13 +40,15 @@ pub enum Bootloader<'a, 'b> {
 impl<'a, 'b> Bootloader<'a, 'b> {
     /// Construct the firmware-appropriate bootloader manager
     pub(crate) fn new(
-        config: &'a Configuration,
+        schema: &'a Schema<'a>,
         assets: &'b [PathBuf],
         mounts: &'a Mounts,
         firmware: &Firmware,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         match firmware {
-            Firmware::UEFI => Bootloader::Systemd(Box::new(systemd_boot::Loader::new(config, assets, mounts))),
+            Firmware::UEFI => Ok(Bootloader::Systemd(Box::new(systemd_boot::Loader::new(
+                schema, assets, mounts,
+            )?))),
             Firmware::BIOS => unimplemented!(),
         }
     }
@@ -56,9 +61,16 @@ impl<'a, 'b> Bootloader<'a, 'b> {
     }
 
     /// Install a single kernel, create records for it.
-    pub fn install(&self, cmdline: &str, schema: &Schema, entry: &Entry) -> Result<(), Error> {
+    pub fn install(&self, cmdline: &str, entry: &Entry) -> Result<(), Error> {
         match &self {
-            Bootloader::Systemd(s) => s.install(cmdline, schema, entry),
+            Bootloader::Systemd(s) => s.install(cmdline, entry),
+        }
+    }
+
+    /// Grab the installed entries
+    pub fn installed_kernels(&self) -> Result<Vec<Kernel>, Error> {
+        match &self {
+            Bootloader::Systemd(s) => s.installed_kernels(),
         }
     }
 }

@@ -13,7 +13,8 @@ use nix::mount::{mount, umount, MsFlags};
 use topology::disk;
 
 use crate::{
-    bootloader::Bootloader, file_utils::cmdline_snippet, BootEnvironment, Configuration, Entry, Error, Root, Schema,
+    bootloader::Bootloader, file_utils::cmdline_snippet, BootEnvironment, Configuration, Entry, Error, Kernel, Root,
+    Schema,
 };
 
 #[derive(Debug)]
@@ -200,6 +201,13 @@ impl<'a> Manager<'a> {
         Ok(mounted_paths)
     }
 
+    /// Discover installed kernels using the mount tokens
+    pub fn installed_kernels(&self, schema: &Schema, _tokens: &[ScopedMount]) -> Result<Vec<Kernel>, Error> {
+        let bootloader = self.bootloader(schema)?;
+        let results = bootloader.installed_kernels()?;
+        Ok(results)
+    }
+
     /// Mount an fat filesystem
     #[inline]
     fn mount_vfat_partition(&self, source: &Path, target: &Path) -> Result<ScopedMount, Error> {
@@ -228,20 +236,24 @@ impl<'a> Manager<'a> {
             }
         }
         // Firstly, get the bootloader updated.
-        let bootloader = Bootloader::new(
-            self.config,
-            &self.bootloader_assets,
-            &self.mounts,
-            &self.boot_env.firmware,
-        );
-        bootloader.sync()?;
+        let bootloader = self.bootloader(schema)?;
 
         // Install every kernel that was passed to us
         for entry in self.entries.iter() {
-            bootloader.install(&self.cmdline, schema, entry)?;
+            bootloader.install(&self.cmdline, entry)?;
         }
 
         Ok(())
+    }
+
+    /// factory - create bootloader instance
+    fn bootloader(&'a self, schema: &'a Schema) -> Result<Bootloader<'a, 'a>, Error> {
+        Ok(Bootloader::new(
+            schema,
+            &self.bootloader_assets,
+            &self.mounts,
+            &self.boot_env.firmware,
+        )?)
     }
 }
 
