@@ -118,11 +118,7 @@ impl<'a> Manager<'a> {
             }
         }
 
-        let cmdline_joined = cmdline
-            .iter()
-            .chain(local_cmdline.iter())
-            .cloned()
-            .collect::<Vec<_>>();
+        let cmdline_joined = cmdline.iter().chain(local_cmdline.iter()).cloned().collect::<Vec<_>>();
 
         Ok(Self {
             config,
