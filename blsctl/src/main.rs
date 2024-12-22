@@ -158,11 +158,14 @@ fn inspect_root(config: &Configuration) -> color_eyre::Result<()> {
         }
     }
     log::info!("Kernels: {kernels:?}");
-    let entries = kernels.iter().map(Entry::new);
+    let mut entries = kernels.iter().map(Entry::new).collect::<Vec<_>>();
+    for entry in entries.iter_mut() {
+        entry.load_cmdline_snippets(config)?;
+    }
 
     // Query the manager
     let manager = Manager::new(config)?
-        .with_entries(entries)
+        .with_entries(entries.into_iter())
         .with_bootloader_assets(booty_bits);
     let _parts = manager.mount_partitions()?;
     eprintln!("manager = {manager:?}");
