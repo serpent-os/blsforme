@@ -39,7 +39,9 @@ pub struct Manager<'a> {
 
     mounts: Mounts,
 
-    cmdline: String,
+    cmdline: Vec<String>,
+
+    system_excluded_snippets: Vec<String>,
 }
 
 impl<'a> Manager<'a> {
@@ -51,7 +53,7 @@ impl<'a> Manager<'a> {
         log::info!("root = {:?}", root.cmd_line());
 
         // Right now we assume `rw` for the rootfs
-        let mut cmdline = vec![root.cmd_line(), "rw".to_string()];
+        let cmdline = [root.cmd_line(), "rw".to_string()];
         let mut local_cmdline = vec![];
 
         let etc_cmdline_d = config.root.path().join("etc").join("kernel").join("cmdline.d");
@@ -81,30 +83,6 @@ impl<'a> Manager<'a> {
             if let Ok(c) = cmdline_snippet(entry) {
                 local_cmdline.push(c);
             }
-        }
-
-        // Merge the system-wide cmdline with the rootfs cmdline
-        if let Ok(it) = fs::read_dir(
-            config
-                .root
-                .path()
-                .join("usr")
-                .join("lib")
-                .join("kernel")
-                .join("cmdline.d"),
-        ) {
-            log::trace!("reading system cmdline.d entries");
-            let entries = it
-                .filter_map(|p| p.ok())
-                .filter(|d| {
-                    if let Some(name) = d.file_name().to_str() {
-                        !system_excludes.contains(&name.to_string())
-                    } else {
-                        true
-                    }
-                })
-                .filter_map(|p| cmdline_snippet(p.path()).ok());
-            cmdline.extend(entries);
         }
 
         // Grab parent disk, establish disk environment setup
@@ -140,12 +118,11 @@ impl<'a> Manager<'a> {
             }
         }
 
-        let cmdline_string = cmdline
+        let cmdline_joined = cmdline
             .iter()
             .chain(local_cmdline.iter())
             .cloned()
-            .collect::<Vec<_>>()
-            .join(" ");
+            .collect::<Vec<_>>();
 
         Ok(Self {
             config,
@@ -153,7 +130,8 @@ impl<'a> Manager<'a> {
             bootloader_assets: vec![],
             boot_env,
             mounts,
-            cmdline: cmdline_string,
+            cmdline: cmdline_joined,
+            system_excluded_snippets: system_excludes,
         })
     }
 
@@ -240,7 +218,28 @@ impl<'a> Manager<'a> {
 
         // Install every kernel that was passed to us
         for entry in self.entries.iter() {
-            bootloader.install(&self.cmdline, entry)?;
+            let root_dir = entry
+                .sysroot
+                .clone()
+                .unwrap_or_else(|| self.config.root.path().to_path_buf());
+            let mut cmdline = self.cmdline.clone();
+
+            // Merge the system-wide cmdline with the rootfs cmdline
+            if let Ok(it) = fs::read_dir(root_dir.join("usr").join("lib").join("kernel").join("cmdline.d")) {
+                log::trace!("reading system cmdline.d entries");
+                let entries = it
+                    .filter_map(|p| p.ok())
+                    .filter(|d| {
+                        if let Some(name) = d.file_name().to_str() {
+                            !self.system_excluded_snippets.contains(&name.to_string())
+                        } else {
+                            true
+                        }
+                    })
+                    .filter_map(|p| cmdline_snippet(p.path()).ok());
+                cmdline.extend(entries);
+            }
+            bootloader.install(&cmdline.join(" "), entry)?;
         }
 
         Ok(())

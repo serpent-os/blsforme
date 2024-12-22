@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use std::path::PathBuf;
+
 use crate::{AuxiliaryFile, Kernel, Schema};
 
 /// An entry corresponds to a single kernel, and may have a supplemental
@@ -9,6 +11,8 @@ use crate::{AuxiliaryFile, Kernel, Schema};
 #[derive(Debug)]
 pub struct Entry<'a> {
     pub(crate) kernel: &'a Kernel,
+
+    pub(crate) sysroot: Option<PathBuf>,
 
     // Additional cmdline
     #[allow(dead_code)]
@@ -18,13 +22,25 @@ pub struct Entry<'a> {
 impl<'a> Entry<'a> {
     /// New entry for the given kernel
     pub fn new(kernel: &'a Kernel) -> Self {
-        Self { kernel, cmdline: None }
+        Self {
+            kernel,
+            cmdline: None,
+            sysroot: None,
+        }
     }
 
     /// With the following cmdline
     pub fn with_cmdline(self, cmdline: impl AsRef<str>) -> Self {
         Self {
             cmdline: Some(cmdline.as_ref().to_string()),
+            ..self
+        }
+    }
+
+    /// With the given system root
+    pub fn with_sysroot(self, sysroot: impl Into<PathBuf>) -> Self {
+        Self {
+            sysroot: Some(sysroot.into()),
             ..self
         }
     }
