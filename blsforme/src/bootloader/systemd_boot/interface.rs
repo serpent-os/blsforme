@@ -48,37 +48,37 @@ pub enum Error {
 }
 
 /// Variables that are currently exposed via efivars
-pub(crate) enum VariableName {
-    //TimeInitUSec,
-    //TimeExecUSec,
+pub enum VariableName {
+    TimeInitUSec,
+    TimeExecUSec,
     DevicePartUUID,
-    //ConfigTimeout,
-    //ConfigTimeoutOneShot,
-    //Entries,
-    //EntryDefault,
-    //EntrySelected,
-    //Features,
-    //ImageIdentifier,
+    ConfigTimeout,
+    ConfigTimeoutOneShot,
+    Entries,
+    EntryDefault,
+    EntrySelected,
+    Features,
+    ImageIdentifier,
     Info,
-    //SystemToken,
+    SystemToken,
 }
 
 impl VariableName {
     /// Convert the variable into a static string representation for the EFI variable name
     fn as_str(&self) -> &'static str {
         match self {
-            //VariableName::TimeInitUSec => "LoaderTimeInitUSec",
-            //VariableName::TimeExecUSec => "LoaderTimeExecUSec",
+            VariableName::TimeInitUSec => "LoaderTimeInitUSec",
+            VariableName::TimeExecUSec => "LoaderTimeExecUSec",
             VariableName::DevicePartUUID => "LoaderDevicePartUUID",
-            //VariableName::ConfigTimeout => "LoaderConfigTimeout",
-            //VariableName::ConfigTimeoutOneShot => "LoaderConfigTimeoutOneShot",
-            //VariableName::Entries => "LoaderEntries",
-            //VariableName::EntryDefault => "LoaderEntryDefault",
-            //VariableName::EntrySelected => "LoaderEntrySelected",
-            //VariableName::Features => "LoaderFeatures",
-            //VariableName::ImageIdentifier => "LoaderImageIdentifier",
+            VariableName::ConfigTimeout => "LoaderConfigTimeout",
+            VariableName::ConfigTimeoutOneShot => "LoaderConfigTimeoutOneShot",
+            VariableName::Entries => "LoaderEntries",
+            VariableName::EntryDefault => "LoaderEntryDefault",
+            VariableName::EntrySelected => "LoaderEntrySelected",
+            VariableName::Features => "LoaderFeatures",
+            VariableName::ImageIdentifier => "LoaderImageIdentifier",
             VariableName::Info => "LoaderInfo",
-            //VariableName::SystemToken => "LoaderSystemToken",
+            VariableName::SystemToken => "LoaderSystemToken",
         }
     }
 }
@@ -115,7 +115,7 @@ impl BootLoaderInterface {
     }
 
     /// Grab a UCS2 string from efivars
-    pub(crate) fn get_ucs2_string(&self, var: VariableName) -> Result<String, Error> {
+    pub fn get_ucs2_string(&self, var: VariableName) -> Result<String, Error> {
         let mut raw = fs::read(self.join_var(var))?
             .chunks(2)
             .skip(2)
