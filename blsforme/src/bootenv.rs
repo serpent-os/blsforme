@@ -41,7 +41,7 @@ pub struct BootEnvironment {
     pub esp: Option<PathBuf>,
 
     /// Firmware in use
-    pub(crate) firmware: Firmware,
+    pub firmware: Firmware,
 
     pub(crate) esp_mountpoint: Option<PathBuf>,
     pub(crate) xboot_mountpoint: Option<PathBuf>,

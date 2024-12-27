@@ -131,6 +131,11 @@ impl<'a> Manager<'a> {
         })
     }
 
+    /// Access the automatic cmdline
+    pub fn cmdline(&self) -> &[String] {
+        &self.cmdline
+    }
+
     /// Set the system kernels to use for sync operations
     pub fn with_entries(self, entries: impl Iterator<Item = Entry<'a>>) -> Self {
         Self {
