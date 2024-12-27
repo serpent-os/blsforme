@@ -175,6 +175,11 @@ impl<'a> Manager<'a> {
         Ok(mounted_paths)
     }
 
+    /// Returns the boot environment
+    pub fn boot_environment(&self) -> &BootEnvironment {
+        &self.boot_env
+    }
+
     /// Discover installed kernels using the mount tokens
     pub fn installed_kernels(&self, schema: &Schema, _tokens: &[ScopedMount]) -> Result<Vec<Kernel>, Error> {
         let bootloader = self.bootloader(schema)?;

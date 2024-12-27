@@ -35,10 +35,10 @@ pub enum Firmware {
 #[derive(Debug)]
 pub struct BootEnvironment {
     /// xbootldr device
-    xbootldr: Option<PathBuf>,
+    pub xbootldr: Option<PathBuf>,
 
     /// The EFI System Partition (stored as a device path)
-    esp: Option<PathBuf>,
+    pub esp: Option<PathBuf>,
 
     /// Firmware in use
     pub(crate) firmware: Firmware,
