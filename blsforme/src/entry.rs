@@ -96,7 +96,7 @@ impl<'a> Entry<'a> {
             Schema::Legacy { os_release, .. } => os_release.name.clone(),
             Schema::Blsforme { os_release } => os_release.id.clone(),
         };
-        if let Some(state_id) = self.state_id {
+        if let Some(state_id) = self.state_id.as_ref() {
             format!("{id}-{version}-{state_id}", version = &self.kernel.version)
         } else {
             format!("{id}-{version}", version = &self.kernel.version)

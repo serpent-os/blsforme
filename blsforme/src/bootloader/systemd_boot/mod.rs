@@ -185,8 +185,7 @@ impl<'a, 'b> Loader<'a, 'b> {
             .boot_root
             .join_insensitive("loader")
             .join_insensitive("entries")
-            .join_insensitive(entry.id(self.schema))
-            .with_extension("conf");
+            .join_insensitive(format!("{}.conf", entry.id(self.schema)));
         log::trace!("writing entry: {}", loader_id.display());
 
         // vmlinuz primary path
