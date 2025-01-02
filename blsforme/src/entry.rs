@@ -27,7 +27,7 @@ pub struct Entry<'a> {
     pub(crate) cmdline: Vec<CmdlineEntry>,
 
     /// Unique state ID for this entry
-    pub(crate) state_id: Option<u64>,
+    pub(crate) state_id: Option<i32>,
 }
 
 impl<'a> Entry<'a> {
@@ -74,7 +74,7 @@ impl<'a> Entry<'a> {
 
     /// With the given state ID
     /// Used by moss to link to the unique transaction ID on disk
-    pub fn with_state_id(self, state_id: u64) -> Self {
+    pub fn with_state_id(self, state_id: i32) -> Self {
         Self {
             state_id: Some(state_id),
             ..self
