@@ -52,11 +52,12 @@ impl<'a> Entry<'a> {
 
         let entries = std::fs::read_dir(&cmdline_d)?;
 
-        for entry in entries {
-            let entry = entry?;
+        for entry in entries.filter_map(Result::ok) {
             let name = entry.file_name().to_string_lossy().to_string();
-            let snippet = cmdline_snippet(entry.path())?;
-            self.cmdline.push(CmdlineEntry { name, snippet });
+            // Don't bomb out on invalid cmdline snippets
+            if let Ok(snippet) = cmdline_snippet(entry.path()) {
+                self.cmdline.push(CmdlineEntry { name, snippet });
+            }
         }
 
         Ok(())
