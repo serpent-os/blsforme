@@ -25,7 +25,7 @@ pub mod file_utils;
 
 mod entry;
 
-pub use entry::Entry;
+pub use entry::{CmdlineEntry, Entry};
 
 /// Core error type for blsforme
 #[derive(Debug, Error)]
