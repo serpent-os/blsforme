@@ -81,6 +81,14 @@ impl<'a> Entry<'a> {
         }
     }
 
+    /// With the given cmdline entry
+    /// Used by moss to inject a `moss.tx={}` parameter
+    pub fn with_cmdline(self, entry: CmdlineEntry) -> Self {
+        let mut cmdline = self.cmdline;
+        cmdline.push(entry);
+        Self { cmdline, ..self }
+    }
+
     /// Return an entry ID, suitable for `.conf` generation
     pub fn id(&self, schema: &Schema) -> String {
         // TODO: For BLS schema, grab something even uniquer (TM)
