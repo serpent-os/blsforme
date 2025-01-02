@@ -25,6 +25,9 @@ pub struct Entry<'a> {
     pub(crate) sysroot: Option<PathBuf>,
 
     pub(crate) cmdline: Vec<CmdlineEntry>,
+
+    /// Unique state ID for this entry
+    pub(crate) state_id: Option<u64>,
 }
 
 impl<'a> Entry<'a> {
@@ -34,6 +37,7 @@ impl<'a> Entry<'a> {
             kernel,
             cmdline: vec![],
             sysroot: None,
+            state_id: None,
         }
     }
 
@@ -67,6 +71,15 @@ impl<'a> Entry<'a> {
         }
     }
 
+    /// With the given state ID
+    /// Used by moss to link to the unique transaction ID on disk
+    pub fn with_state_id(self, state_id: u64) -> Self {
+        Self {
+            state_id: Some(state_id),
+            ..self
+        }
+    }
+
     /// Return an entry ID, suitable for `.conf` generation
     pub fn id(&self, schema: &Schema) -> String {
         // TODO: For BLS schema, grab something even uniquer (TM)
@@ -74,7 +87,11 @@ impl<'a> Entry<'a> {
             Schema::Legacy { os_release, .. } => os_release.name.clone(),
             Schema::Blsforme { os_release } => os_release.id.clone(),
         };
-        format!("{id}-{}", &self.kernel.version)
+        if let Some(state_id) = self.state_id {
+            format!("{id}-{version}-{state_id}", version = &self.kernel.version)
+        } else {
+            format!("{id}-{version}", version = &self.kernel.version)
+        }
     }
 
     /// Generate an installed name for the kernel, used by bootloaders
