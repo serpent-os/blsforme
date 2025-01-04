@@ -188,6 +188,8 @@ impl<'a, 'b> Loader<'a, 'b> {
             .join_insensitive(format!("{}.conf", entry.id(self.schema)));
         log::trace!("writing entry: {}", loader_id.display());
 
+        let sysroot = entry.sysroot.clone().unwrap_or_default();
+
         // vmlinuz primary path
         let vmlinuz = self.kernel_dir.join_insensitive(
             entry
@@ -201,7 +203,7 @@ impl<'a, 'b> Loader<'a, 'b> {
             .iter()
             .filter_map(|asset| {
                 Some((
-                    asset.path.clone(),
+                    sysroot.join(&asset.path),
                     self.kernel_dir
                         .join_insensitive(entry.installed_asset_name(self.schema, asset)?),
                 ))
@@ -211,7 +213,7 @@ impl<'a, 'b> Loader<'a, 'b> {
         log::trace!("with initrds: {:?}", initrds);
 
         // build up the total changeset
-        let mut changeset = vec![(entry.kernel.image.clone(), vmlinuz.clone())];
+        let mut changeset = vec![(sysroot.join(&entry.kernel.image), vmlinuz.clone())];
         changeset.extend(initrds);
 
         // Determine which need copying now.
