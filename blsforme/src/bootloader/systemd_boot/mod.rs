@@ -120,16 +120,12 @@ impl<'a, 'b> Loader<'a, 'b> {
                 .filter(|c| !exclusions.contains(&c.name))
                 .map(|c| c.snippet.clone())
                 .collect::<Vec<_>>();
-            let mut full_cmdline = base_cmdline
+            let full_cmdline = base_cmdline
                 .iter()
                 .chain(entry_cmdline.iter())
                 .cloned()
                 .collect::<Vec<_>>();
 
-            // kernel specific cmdline
-            if let Some(k_cmdline) = entry.kernel.cmdline.as_ref() {
-                full_cmdline.push(k_cmdline.clone());
-            }
             let installed = self.install(&full_cmdline.join(" "), entry)?;
             installed_entries.push(installed);
         }

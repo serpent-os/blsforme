@@ -44,6 +44,23 @@ impl<'a> Entry<'a> {
     /// Load cmdline snippets from the system root for this entry's sysroot
     pub fn load_cmdline_snippets(&mut self, config: &Configuration) -> Result<(), super::Error> {
         let sysroot = self.sysroot.clone().unwrap_or(config.root.path().into());
+
+        // Load local cmdline snippets for this kernel entry
+        for snippet in self
+            .kernel
+            .extras
+            .iter()
+            .filter(|e| matches!(e.kind, crate::AuxiliaryKind::Cmdline))
+        {
+            if let Ok(cmdline) = cmdline_snippet(sysroot.join(&snippet.path)) {
+                self.cmdline.push(CmdlineEntry {
+                    name: snippet.path.file_name().unwrap().to_string_lossy().to_string(),
+                    snippet: cmdline,
+                });
+            }
+        }
+
+        // Globals
         let cmdline_d = sysroot.join("usr").join("lib").join("kernel").join("cmdline.d");
 
         if !cmdline_d.exists() {
